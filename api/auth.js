@@ -15,10 +15,15 @@ module.exports = async function handler(request, response) {
       return response.status(403).json({ error: 'Only the configured admin can request a login link.' });
     }
 
+    const requestOrigin = request.headers.origin
+      || `https://${request.headers['x-forwarded-host'] || request.headers.host}`;
+    const redirectUrl = process.env.SITE_URL?.startsWith('https://')
+      ? process.env.SITE_URL
+      : requestOrigin;
     const supabase = getClient();
     const result = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: process.env.SITE_URL || request.headers.origin }
+      options: { emailRedirectTo: redirectUrl }
     });
     if (result.error) return response.status(400).json({ error: result.error.message });
     return response.status(200).json({ message: 'Check your email for the login link.' });
