@@ -177,6 +177,11 @@
         logout.hidden = !accessToken;
       }
 
+      function showLogin(message) {
+        setLoggedIn(null);
+        authStatus.textContent = message;
+      }
+
       function render(items) {
         fines.replaceChildren(...items.map((fine) => {
           const item = document.createElement('li');
@@ -193,7 +198,10 @@
         const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
         const response = await fetch('/api/fines', { headers });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error);
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) showLogin(data.error);
+          throw new Error(data.error);
+        }
         render(data.fines);
       }
 
@@ -210,7 +218,10 @@
             body: JSON.stringify(body)
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error);
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) showLogin(data.error);
+            throw new Error(data.error);
+          }
           authStatus.textContent = data.message;
         } catch (error) {
           authStatus.textContent = error.message;

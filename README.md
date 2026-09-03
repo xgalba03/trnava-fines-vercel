@@ -6,6 +6,7 @@ This is a deliberately small Vercel + Supabase proof of concept. Anyone can view
 
 1. Create a Supabase project.
 2. In Supabase SQL Editor, run [`schema.sql`](schema.sql). If you already ran the original MVP schema, run [`migration.sql`](migration.sql) instead. It removes old anonymous test rows because they have no owner.
+   If you still see a row-level security error after the migration, run [`repair-rls.sql`](repair-rls.sql) once.
 3. Import this repository into Vercel.
 4. In Vercel, open **Project Settings -> Environment Variables**.
 5. Add these variables exactly, selecting **Production** (and Preview if needed):

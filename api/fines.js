@@ -44,7 +44,12 @@ module.exports = async function handler(request, response) {
     const { error: insertError } = await supabase
       .from('fines')
       .insert({ user_id: user.id, description: cleanDescription, amount: numericAmount });
-    if (insertError) throw insertError;
+    if (insertError) {
+      if (insertError.code === '42501') {
+        throw new Error('Database RLS is not configured for authenticated inserts. Run repair-rls.sql in Supabase.');
+      }
+      throw insertError;
+    }
 
     return module.exports({ method: 'GET', headers: {} }, response);
   } catch (error) {
