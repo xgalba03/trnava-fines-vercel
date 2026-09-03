@@ -46,6 +46,13 @@
         grid-template-columns: 1fr auto;
       }
 
+      #auth {
+        margin: 1rem 0;
+        padding: 1rem;
+        border: 1px solid #dfe5eb;
+        border-radius: 4px;
+      }
+
       #app-header {
         display: flex;
         align-items: center;
@@ -58,6 +65,11 @@
         padding: 0.25rem 0.6rem;
         background: #ffffff;
         color: #17202a;
+      }
+
+      #login {
+        min-height: 2rem;
+        padding: 0.25rem 0.6rem;
       }
 
       h1 {
@@ -129,20 +141,22 @@
   </head>
   <body>
     <main>
-      <section id="auth">
-        <h1>Trnava Fines</h1>
-        <p>Anyone can view the fines. Admin access is required to add one.</p>
-        <form id="auth-form">
-          <input name="email" type="email" placeholder="Email" required />
-          <button type="submit">Email me a login link</button>
-        </form>
-        <p id="auth-status" role="status"></p>
-      </section>
       <section id="app">
         <div id="app-header">
           <h1>Trnava Fines</h1>
-          <button id="logout" type="button" hidden>Log out</button>
+          <div>
+            <button id="login" type="button">Login</button>
+            <button id="logout" type="button" hidden>Log out</button>
+          </div>
         </div>
+        <section id="auth" hidden>
+          <p>Admin access is required to add fines.</p>
+          <form id="auth-form">
+            <input name="email" type="email" placeholder="Your email" required />
+            <button type="submit">Email me a login link</button>
+          </form>
+          <p id="auth-status" role="status"></p>
+        </section>
         <div id="fine-entry" hidden>
           <p>Add a fine below. It is saved to the database.</p>
           <form id="fine-form">
@@ -162,6 +176,7 @@
       const authStatus = document.querySelector('#auth-status');
       const app = document.querySelector('#app');
       const fineEntry = document.querySelector('#fine-entry');
+      const login = document.querySelector('#login');
       const logout = document.querySelector('#logout');
       const form = document.querySelector('#fine-form');
       const status = document.querySelector('#status');
@@ -174,11 +189,13 @@
         else localStorage.removeItem('trnava_access_token');
         auth.hidden = Boolean(accessToken);
         fineEntry.hidden = !accessToken;
+        login.hidden = Boolean(accessToken);
         logout.hidden = !accessToken;
       }
 
       function showLogin(message) {
         setLoggedIn(null);
+        auth.hidden = false;
         authStatus.textContent = message;
       }
 
@@ -230,8 +247,14 @@
         }
       });
 
+      login.addEventListener('click', () => {
+        auth.hidden = !auth.hidden;
+        if (!auth.hidden) authForm.querySelector('input').focus();
+      });
+
       logout.addEventListener('click', () => {
         setLoggedIn(null);
+        auth.hidden = true;
         fines.replaceChildren();
         status.textContent = '';
       });

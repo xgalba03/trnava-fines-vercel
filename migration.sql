@@ -18,4 +18,4 @@ create policy "Users can add their own fines"
 on public.fines for insert to authenticated
 with check (user_id = auth.uid());
 
--- Public visitors use the server endpoint for reads. No direct anonymous table read is allowed.
+-- Public visitors use the server endpoint for reads. No direct anonymous table read is allowed.I
