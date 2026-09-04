@@ -15,17 +15,13 @@
       body {
         margin: 0;
         min-height: 100vh;
-        padding: 2rem 1rem;
+        padding: 0.75rem;
       }
 
       main {
         width: min(100%, 58rem);
         margin: 0 auto;
-        padding: 2rem;
-        background: #ffffff;
-        border: 1px solid #dfe5eb;
-        border-radius: 8px;
-        box-shadow: 0 12px 30px rgb(23 32 42 / 8%);
+        padding: 0;
       }
 
       section[hidden] {
@@ -49,15 +45,13 @@
 
       #auth-form,
       #password-form {
-        grid-template-columns: 1fr 1fr auto;
+        grid-template-columns: 1fr;
       }
 
       #auth,
       #password-settings {
-        margin: 1rem 0;
-        padding: 1rem;
-        border: 1px solid #dfe5eb;
-        border-radius: 4px;
+        margin: 0;
+        padding: 0;
       }
 
       #password-settings[hidden] {
@@ -65,52 +59,76 @@
       }
 
       #app-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+        padding: 0.75rem 0.25rem;
+        background: rgb(244 246 248 / 94%);
+        backdrop-filter: blur(8px);
       }
 
-      #logout {
-        min-height: 2rem;
-        padding: 0.25rem 0.6rem;
-        background: #ffffff;
-        color: #17202a;
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
       }
 
-      #login {
-        min-height: 2rem;
-        padding: 0.25rem 0.6rem;
+      .header-actions button {
+        min-height: 2.35rem;
+        padding: 0.4rem 0.65rem;
       }
 
       h1 {
         margin: 0;
+        font-size: 1.35rem;
+        line-height: 1.1;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+
+      .header-subtitle,
+      .section-subtitle {
+        color: #687785;
+        font-size: 0.75rem;
       }
 
       p {
-        margin: 0.5rem 0 1.5rem;
+        margin: 0.5rem 0 1rem;
         color: #52606d;
       }
 
       form {
         display: grid;
         gap: 0.75rem;
-        grid-template-columns: 1fr 8rem auto;
-      }
-
-      #fine-form {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      #event-form,
-      #obligation-form {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
       }
 
       .panel {
-        margin-top: 1.5rem;
-        padding-top: 1rem;
-        border-top: 2px solid #dfe5eb;
+        min-width: 0;
+        padding: 1rem;
+        background: #ffffff;
+        border: 1px solid #dfe5eb;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 14px rgb(23 32 42 / 5%);
+      }
+
+      .primary-panel {
+        border-color: #c8d4df;
+      }
+
+      .section-heading,
+      .dialog-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
       }
 
       .actions {
@@ -129,6 +147,7 @@
       .item-copy {
         display: grid;
         gap: 0.2rem;
+        min-width: 0;
       }
 
       .meta {
@@ -171,7 +190,7 @@
       select,
       button {
         box-sizing: border-box;
-        min-height: 2.5rem;
+        min-height: 2.75rem;
         padding: 0.5rem 0.75rem;
         border: 1px solid #b8c2cc;
         border-radius: 4px;
@@ -190,41 +209,145 @@
         color: #17202a;
       }
 
+      .icon-button {
+        width: 2.75rem;
+        padding: 0;
+        font-size: 1.5rem;
+        line-height: 1;
+      }
+
       button:disabled {
         cursor: wait;
         opacity: 0.6;
       }
 
       #status {
-        min-height: 1.5rem;
-        margin: 1rem 0 0;
+        min-height: 0;
+        margin: 0.35rem 0 0;
+        font-size: 0.85rem;
       }
 
       ul {
         padding: 0;
-        margin: 1rem 0 0;
+        margin: 0.5rem 0 0;
         list-style: none;
+      }
+
+      .scroll-list {
+        max-height: 20rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        padding-right: 0.2rem;
+      }
+
+      .scroll-list:empty::before {
+        display: block;
+        padding: 1rem 0;
+        color: #687785;
+        content: attr(data-empty);
+        font-size: 0.9rem;
+      }
+
+      .fines-list {
+        max-height: 28rem;
+      }
+
+      .event-list {
+        max-height: 22rem;
       }
 
       li {
         display: flex;
         justify-content: space-between;
+        align-items: flex-start;
         gap: 1rem;
         padding: 0.75rem 0;
         border-top: 1px solid #e6eaee;
       }
 
-      @media (max-width: 36rem) {
-        #auth-form,
-        #password-form {
-          grid-template-columns: 1fr;
+      li:first-child {
+        border-top: 0;
+      }
+
+      .empty-state {
+        color: #687785;
+        font-size: 0.9rem;
+      }
+
+      dialog {
+        width: min(calc(100% - 1rem), 42rem);
+        max-height: calc(100dvh - 1rem);
+        box-sizing: border-box;
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid #c8d4df;
+        border-radius: 0.9rem;
+        box-shadow: 0 24px 60px rgb(23 32 42 / 25%);
+      }
+
+      dialog::backdrop {
+        background: rgb(23 32 42 / 55%);
+        backdrop-filter: blur(2px);
+      }
+
+      .dialog-heading {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 1rem;
+        background: #ffffff;
+        border-bottom: 1px solid #dfe5eb;
+      }
+
+      #login-dialog-content,
+      #admin-dialog-content {
+        display: grid;
+        gap: 1.25rem;
+        max-height: calc(100dvh - 5.5rem);
+        padding: 1rem;
+        overflow-y: auto;
+      }
+
+      #admin-dialog-content > * {
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid #dfe5eb;
+      }
+
+      #admin-dialog-content > *:last-child {
+        border-bottom: 0;
+      }
+
+      #admin-dialog #logout {
+        width: 100%;
+        background: #ffffff;
+        color: #17202a;
+      }
+
+      @media (min-width: 48rem) {
+        body {
+          padding: 1.5rem;
         }
 
-        form,
+        #auth-form,
+        #password-form {
+          grid-template-columns: 1fr 1fr auto;
+        }
+
         #fine-form,
         #event-form,
         #obligation-form {
-          grid-template-columns: 1fr;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 30rem) {
+        li {
+          gap: 0.6rem;
+        }
+
+        li > .actions {
+          max-width: 7.5rem;
         }
       }
     </style>
@@ -233,9 +356,14 @@
     <main>
       <section id="app">
         <div id="app-header">
-          <h1>Trnava Fines</h1>
           <div>
+            <h1>Trnava Fines</h1>
+            <span class="header-subtitle">Team fine bank</span>
+          </div>
+          <div class="header-actions">
             <button id="login" type="button">Login</button>
+            <button id="add-fine" type="button" hidden>+ Fine</button>
+            <button id="admin-menu" class="secondary" type="button" hidden>Admin</button>
             <button id="logout" type="button" hidden>Log out</button>
           </div>
         </div>
@@ -250,6 +378,7 @@
           <p id="auth-status" role="status"></p>
         </section>
         <div id="fine-entry" hidden>
+          <h3>Add a fine</h3>
           <p>Add a fine below. It is saved to the database.</p>
           <form id="fine-form">
             <label class="form-field">
@@ -289,6 +418,7 @@
           </form>
         </div>
         <section id="password-settings" hidden>
+          <h3>Password</h3>
           <p>Set or change the password for future admin logins.</p>
           <form id="password-form">
             <input name="password" type="password" minlength="12" placeholder="New password" autocomplete="new-password" required />
@@ -298,7 +428,7 @@
           <p id="password-status" role="status"></p>
         </section>
         <section id="admin-tools" class="panel admin-only" hidden>
-          <h2>Admin data tools</h2>
+          <h3>Data tools</h3>
           <p>Sync the version-controlled seed files, or recalculate automatic birthday dates after calendar changes.</p>
           <div class="actions">
             <button id="sync-seed" type="button">Sync seed files</button>
@@ -306,9 +436,10 @@
           </div>
           <p id="admin-tools-status" role="status"></p>
         </section>
-        <section class="panel">
+        <section id="event-section" class="panel">
           <h2>Important team events</h2>
           <div id="event-admin" class="admin-only" hidden>
+            <h3>Add or edit an event</h3>
             <form id="event-form">
               <input name="event_id" type="hidden" />
               <label class="form-field"><span>Season</span><select name="season_id" required></select></label>
@@ -326,11 +457,12 @@
             </form>
             <p id="event-status" role="status"></p>
           </div>
-          <ul id="events"></ul>
+          <ul id="events" class="scroll-list event-list" data-empty="No team events scheduled."></ul>
         </section>
-        <section class="panel">
+        <section id="obligation-section" class="panel">
           <h2>Player obligations</h2>
           <div id="obligation-admin" class="admin-only" hidden>
+            <h3>Add or edit an obligation</h3>
             <form id="obligation-form">
               <input name="obligation_id" type="hidden" />
               <label class="form-field"><span>Player</span><select name="player_id" required></select></label>
@@ -342,26 +474,51 @@
             </form>
             <p id="obligation-status" role="status"></p>
           </div>
-          <ul id="obligations"></ul>
+          <ul id="obligations" class="scroll-list" data-empty="No active player obligations."></ul>
         </section>
-        <section class="panel">
+        <section id="objection-section" class="panel">
           <h2>Objections</h2>
           <p>A submitted objection costs €1. If accepted, the original fine is voided and a €2 account credit is recorded.</p>
-          <ul id="objections"></ul>
+          <ul id="objections" class="scroll-list" data-empty="No objections submitted."></ul>
         </section>
-        <section class="panel">
-        <h2>Recent fines</h2>
-        <p id="status" role="status"></p>
-        <ul id="fines"></ul>
+        <section id="fines-section" class="panel primary-panel">
+          <div class="section-heading">
+            <div>
+              <h2>Recent fines</h2>
+              <span class="section-subtitle">Latest team activity</span>
+            </div>
+          </div>
+          <p id="status" role="status"></p>
+          <ul id="fines" class="scroll-list fines-list" data-empty="No fines recorded yet."></ul>
         </section>
       </section>
     </main>
+    <dialog id="login-dialog">
+      <div class="dialog-heading">
+        <h2>Admin login</h2>
+        <button id="close-login" class="icon-button secondary" type="button" aria-label="Close login">×</button>
+      </div>
+      <div id="login-dialog-content"></div>
+    </dialog>
+    <dialog id="admin-dialog">
+      <div class="dialog-heading">
+        <div>
+          <h2>Admin tools</h2>
+          <span class="section-subtitle">Changes are visible to the team immediately</span>
+        </div>
+        <button id="close-admin" class="icon-button secondary" type="button" aria-label="Close admin tools">×</button>
+      </div>
+      <div id="admin-dialog-content"></div>
+    </dialog>
     <script>
+      const app = document.querySelector('#app');
       const auth = document.querySelector('#auth');
       const authForm = document.querySelector('#auth-form');
       const authStatus = document.querySelector('#auth-status');
       const fineEntry = document.querySelector('#fine-entry');
       const login = document.querySelector('#login');
+      const addFineButton = document.querySelector('#add-fine');
+      const adminMenuButton = document.querySelector('#admin-menu');
       const logout = document.querySelector('#logout');
       const magicLink = document.querySelector('#magic-link');
       const passwordSettings = document.querySelector('#password-settings');
@@ -399,6 +556,26 @@
       const obligationReset = document.querySelector('#obligation-reset');
       const obligationSubmit = document.querySelector('#obligation-submit');
       const objectionList = document.querySelector('#objections');
+      const finesSection = document.querySelector('#fines-section');
+      const eventSection = document.querySelector('#event-section');
+      const loginDialog = document.querySelector('#login-dialog');
+      const adminDialog = document.querySelector('#admin-dialog');
+      const loginDialogContent = document.querySelector('#login-dialog-content');
+      const adminDialogContent = document.querySelector('#admin-dialog-content');
+      const closeLogin = document.querySelector('#close-login');
+      const closeAdmin = document.querySelector('#close-admin');
+
+      // Keep the public dashboard focused while retaining all admin forms.
+      app.insertBefore(finesSection, eventSection);
+      loginDialogContent.append(auth);
+      adminDialogContent.append(
+        fineEntry,
+        document.querySelector('#event-admin'),
+        document.querySelector('#obligation-admin'),
+        document.querySelector('#admin-tools'),
+        passwordSettings,
+        logout
+      );
 
       const fineTypesById = new Map();
       const playersById = new Map();
@@ -416,7 +593,11 @@
         passwordSettings.hidden = !loggedIn;
         adminOnly.forEach((element) => { element.hidden = !loggedIn; });
         login.hidden = loggedIn;
+        addFineButton.hidden = !loggedIn;
+        adminMenuButton.hidden = !loggedIn;
         logout.hidden = !loggedIn;
+        if (loggedIn && loginDialog.open) loginDialog.close();
+        if (!loggedIn && adminDialog.open) adminDialog.close();
         if (eventList.childElementCount) loadEvents().catch((error) => { eventStatus.textContent = error.message; });
         if (obligationList.childElementCount) loadObligations().catch((error) => { obligationStatus.textContent = error.message; });
         if (objectionList.childElementCount) loadObjections().catch((error) => { status.textContent = error.message; });
@@ -444,6 +625,12 @@
         clearSession();
         updateAuthUi(false, true);
         authStatus.textContent = message || '';
+        if (!loginDialog.open) loginDialog.showModal();
+      }
+
+      function openAdminAt(element) {
+        if (!adminDialog.open) adminDialog.showModal();
+        requestAnimationFrame(() => element.scrollIntoView({ behavior: 'smooth', block: 'start' }));
       }
 
       async function readJson(response) {
@@ -752,7 +939,7 @@
         const selected = new Set((event.participants || []).map((item) => String(item.player_id)));
         [...formElements.player_ids.options].forEach((item) => { item.selected = selected.has(item.value); });
         eventPlayersField.hidden = event.attendance_scope !== 'partial_team';
-        eventForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        openAdminAt(eventForm);
       }
 
       function renderEvents(items) {
@@ -840,7 +1027,7 @@
                 obligationForm.elements.trigger_date.value = obligation.trigger_date || '';
                 obligationForm.elements.note.value = obligation.scheduling_note || '';
                 obligationSubmit.textContent = 'Save obligation';
-                obligationForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                openAdminAt(obligationForm);
               }),
               actionButton('Done', async () => {
                 const note = window.prompt('Optional fulfilment note:') || '';
@@ -1101,10 +1288,21 @@
       });
 
       login.addEventListener('click', () => {
-        auth.hidden = !auth.hidden;
+        auth.hidden = false;
         authStatus.textContent = '';
-        if (!auth.hidden) authForm.elements.email.focus();
+        if (!loginDialog.open) loginDialog.showModal();
+        authForm.elements.email.focus();
       });
+
+      addFineButton.addEventListener('click', () => openAdminAt(fineEntry));
+      adminMenuButton.addEventListener('click', () => openAdminAt(adminDialogContent));
+      closeLogin.addEventListener('click', () => loginDialog.close());
+      closeAdmin.addEventListener('click', () => adminDialog.close());
+      for (const dialog of [loginDialog, adminDialog]) {
+        dialog.addEventListener('click', (event) => {
+          if (event.target === dialog) dialog.close();
+        });
+      }
 
       logout.addEventListener('click', async () => {
         const previousAccessToken = accessToken;
