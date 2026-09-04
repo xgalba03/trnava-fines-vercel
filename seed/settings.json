@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "settings": {
+    "daysAfterClubPaymentBeforeDeadline": 5,
+    "dailyLatePaymentFine": 1,
+    "latePenaltiesEnabled": true
+  }
+}

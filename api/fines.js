@@ -12,7 +12,6 @@ function getClient(key, token) {
 module.exports = async function handler(request, response) {
   try {
     const token = request.headers.authorization?.replace(/^Bearer\s+/i, '');
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (request.method === 'GET') {
       const supabase = getClient(process.env.SUPABASE_ANON_KEY);

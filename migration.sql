@@ -1,7 +1,12 @@
+-- One-time migration for the original MVP table that did not have user_id.
+-- This deletes old rows without an owner. Review that behaviour before running.
+-- Replace __ADMIN_EMAIL__ with the same email used for ADMIN_EMAIL in Vercel.
+
+begin;
+
 alter table public.fines
 add column user_id uuid references auth.users(id);
 
--- Existing anonymous test rows cannot be assigned to a user.
 delete from public.fines
 where user_id is null;
 
@@ -10,12 +15,43 @@ alter column user_id set not null;
 
 alter table public.fines enable row level security;
 
-create policy "Users can read their own fines"
-on public.fines for select to authenticated
-using (user_id = auth.uid());
+drop policy if exists "Users can read their own fines" on public.fines;
+drop policy if exists "Users can add their own fines" on public.fines;
+drop policy if exists "Anyone can read fines" on public.fines;
+drop policy if exists "Admin can add fines" on public.fines;
+drop policy if exists "Admin can update fines" on public.fines;
+drop policy if exists "Admin can delete fines" on public.fines;
 
-create policy "Users can add their own fines"
+revoke all privileges on table public.fines from anon, authenticated;
+grant select (id, description, amount, created_at)
+on public.fines to anon, authenticated;
+grant insert (user_id, description, amount)
+on public.fines to authenticated;
+grant update (description, amount)
+on public.fines to authenticated;
+grant delete on public.fines to authenticated;
+
+create policy "Anyone can read fines"
+on public.fines for select to anon, authenticated
+using (true);
+
+create policy "Admin can add fines"
 on public.fines for insert to authenticated
-with check (user_id = auth.uid());
+with check (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = lower('__ADMIN_EMAIL__')
+  and user_id = auth.uid()
+);
 
--- Public visitors use the server endpoint for reads. No direct anonymous table read is allowed.I
+create policy "Admin can update fines"
+on public.fines for update to authenticated
+using (lower(coalesce(auth.jwt() ->> 'email', '')) = lower('__ADMIN_EMAIL__'))
+with check (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = lower('__ADMIN_EMAIL__')
+  and user_id = auth.uid()
+);
+
+create policy "Admin can delete fines"
+on public.fines for delete to authenticated
+using (lower(coalesce(auth.jwt() ->> 'email', '')) = lower('__ADMIN_EMAIL__'));
+
+commit;

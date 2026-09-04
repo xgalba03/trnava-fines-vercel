@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "players": [
+    { "name": "Martin", "jerseyNumber": null, "active": true },
+    { "name": "Šéfko", "jerseyNumber": 8, "active": true },
+    { "name": "Matino", "jerseyNumber": null, "active": true },
+    { "name": "Samo", "jerseyNumber": null, "active": true },
+    { "name": "Lukáš", "jerseyNumber": null, "active": true },
+    { "name": "Leon", "jerseyNumber": null, "active": true },
+    { "name": "Alex", "jerseyNumber": null, "active": true },
+    { "name": "Janči", "jerseyNumber": null, "active": true },
+    { "name": "Rado", "jerseyNumber": null, "active": true },
+    { "name": "Šimon", "jerseyNumber": 10, "active": true },
+    { "name": "Roman", "jerseyNumber": null, "active": true },
+    { "name": "Peter", "jerseyNumber": null, "active": true },
+    { "name": "Braňo", "jerseyNumber": null, "active": true }
+  ]
+}
