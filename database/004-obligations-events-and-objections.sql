@@ -401,14 +401,22 @@ as $$
 declare
   original_fine public.fines%rowtype;
   filing_type public.fine_types%rowtype;
+  existing_objection_id bigint;
   new_objection_id bigint;
   new_fee_fine_id bigint;
 begin
   if not public.is_app_admin() then
     raise exception 'Admin access required.';
   end if;
-  if length(btrim(objection_reason)) = 0 then
+  if objection_reason is null or length(btrim(objection_reason)) = 0 then
     raise exception 'An objection reason is required.';
+  end if;
+
+  select id into existing_objection_id
+  from public.objections
+  where fine_id = requested_fine_id;
+  if found then
+    return existing_objection_id;
   end if;
 
   select * into original_fine

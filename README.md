@@ -20,11 +20,13 @@ logging in with email and password.
 5. Run [`database/004-obligations-events-and-objections.sql`](database/004-obligations-events-and-objections.sql)
    to add birthdays, full/partial-team events, editable obligations, objection
    fees and account credits. Run the migrations in numeric order and only once.
-6. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+6. If migration `004` was applied before the retry fix, run
+   [`database/005-idempotent-objections.sql`](database/005-idempotent-objections.sql).
+7. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-7. Import this repository into Vercel.
-8. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+8. Import this repository into Vercel.
+9. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -35,7 +37,7 @@ logging in with email and password.
    - `SITE_URL`: the production HTTPS Vercel URL, without a trailing path.
    - `CRON_SECRET`: a long random server-only secret used by Vercel when it runs
      the daily obligation penalty job.
-9. Redeploy after changing environment variables.
+10. Redeploy after changing environment variables.
 
 In **Supabase -> Authentication -> URL Configuration**, set the Site URL and an
 allowed redirect URL to the deployed site. This ensures the one-time password

@@ -6,7 +6,8 @@ async function listObjections(supabase) {
     .select([
       'id', 'fine_id', 'player_id', 'status', 'reason', 'filing_fee_amount',
       'accepted_credit_amount', 'fee_fine_id', 'resolution_note', 'submitted_at',
-      'resolved_at', 'player:players(id, name)', 'fine:fines(id, name, amount, occurred_at)'
+      'resolved_at', 'player:players(id, name)',
+      'fine:fines!objections_fine_id_fkey(id, name, amount, occurred_at)'
     ].join(', '))
     .order('submitted_at', { ascending: false });
   if (error) throw error;
@@ -36,11 +37,21 @@ module.exports = async function handler(request, response) {
       if (!Number.isSafeInteger(fineId) || fineId <= 0 || !reason) {
         return response.status(400).json({ error: 'Fine and objection reason are required.' });
       }
-      const { error } = await supabase.rpc('submit_objection', {
-        requested_fine_id: fineId,
-        objection_reason: reason
-      });
-      if (error) throw error;
+      const { data: existing, error: existingError } = await supabase
+        .from('objections')
+        .select('id, status')
+        .eq('fine_id', fineId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (!existing) {
+        const { error } = await supabase.rpc('submit_objection', {
+          requested_fine_id: fineId,
+          objection_reason: reason
+        });
+        // A simultaneous/retried request can lose the race after the check.
+        // The unique key guarantees that it never creates a second fee.
+        if (error && error.code !== '23505') throw error;
+      }
     } else if (action === 'resolve') {
       const objectionId = Number(body.objection_id);
       const decision = String(body.decision || '');
