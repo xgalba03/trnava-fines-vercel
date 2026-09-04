@@ -1,6 +1,11 @@
 {
   "version": 1,
-  "season": null,
+  "season": {
+  "name": "2026/27",
+  "startDate": "2026-09-01",
+  "endDate": "2027-05-31",
+  "active": true
+},
   "weeklyPractices": [
     {
     "code": "monday-trnava-team-practice",
@@ -12,7 +17,7 @@
     "durationMinutes": 120,
     "timeZone": "Europe/Bratislava",
     "attendanceScope": "partial_team",
-    "playerNames": [],
+    "playerNames": ["Lukáš", "Alex", "Rado", "Roman", "Martin"],
     "location": "MŠH Trnava",
     "notes": "",
     "active": true,
