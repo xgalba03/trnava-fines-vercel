@@ -136,6 +136,10 @@ function validateBirthdays(document) {
   document.birthdays.forEach((birthday, index) => {
     const prefix = `seed/birthdays.json: birthdays[${index}]`;
     requireNonEmptyString(birthday.playerName, `${prefix}.playerName`);
+    if (birthday.month === null && birthday.day === null) return;
+    if (birthday.month === null || birthday.day === null) {
+      throw new Error(`${prefix}.month and .day must both be filled or both be null.`);
+    }
     if (!Number.isInteger(birthday.month) || birthday.month < 1 || birthday.month > 12) {
       throw new Error(`${prefix}.month must be an integer from 1 to 12.`);
     }
@@ -239,10 +243,23 @@ function validateObligationTypes(document) {
   assertUnique(document.obligationTypes.map((type) => type.code), 'Obligation type codes');
 }
 
-validatePlayers(readJson('seed/players.json'));
+function validateBirthdayPlayerMappings(birthdaysDocument, playersDocument) {
+  const playerNames = new Set(playersDocument.players.map((player) => player.name.trim().toLowerCase()));
+  for (const birthday of birthdaysDocument.birthdays) {
+    if (!playerNames.has(birthday.playerName.trim().toLowerCase())) {
+      throw new Error(`seed/birthdays.json: unknown playerName: ${birthday.playerName}.`);
+    }
+  }
+}
+
+const playersDocument = readJson('seed/players.json');
+const birthdaysDocument = readJson('seed/birthdays.json');
+
+validatePlayers(playersDocument);
 validateFineTypes(readJson('seed/fine-types.json'));
 validateSettings(readJson('seed/settings.json'));
-validateBirthdays(readJson('seed/birthdays.json'));
+validateBirthdays(birthdaysDocument);
+validateBirthdayPlayerMappings(birthdaysDocument, playersDocument);
 validateTeamEvents(readJson('seed/team-events.json'));
 validateObligationTypes(readJson('seed/obligation-types.json'));
 

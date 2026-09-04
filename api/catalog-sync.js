@@ -81,7 +81,7 @@ async function syncBirthdays(supabase, playersByName, userId) {
     }).eq('id', player.id);
     if (error) throw error;
   }
-  return birthdaysSeed.birthdays.length;
+  return birthdaysSeed.birthdays.filter((birthday) => birthday.month && birthday.day).length;
 }
 
 async function syncCalendar(supabase, playersByName, userId) {

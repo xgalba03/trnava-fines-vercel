@@ -65,6 +65,11 @@ Store birthdays in `birthdays.json` without birth years:
 }
 ```
 
+Names map case-insensitively to `players.json` and then to the corresponding
+Supabase player row. Keep both `month` and `day` as `null` until you know a
+player's date; fill both together. The sync stores these as `birth_month` and
+`birth_day` on `players`. Birth years are intentionally not collected.
+
 `team-events.json` contains one season and its changeable calendar. A full-team
 event must have an empty `playerNames` array. A partial practice must list the
 participating players:

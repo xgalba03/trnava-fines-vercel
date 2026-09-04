@@ -1,4 +1,18 @@
 {
   "version": 1,
-  "birthdays": []
+  "birthdays": [
+    { "playerName": "Martin", "month": 9, "day": 27 },
+    { "playerName": "Šéfko", "month": 2, "day": 12 },
+    { "playerName": "Matino", "month": 6, "day": 3 },
+    { "playerName": "Samo", "month": 3, "day": 25 },
+    { "playerName": "Lukáš", "month": 5, "day": 23 },
+    { "playerName": "Leon", "month": 1, "day": 28 },
+    { "playerName": "Alex", "month": 12, "day": 12 },
+    { "playerName": "Janči", "month": 8, "day": 27 },
+    { "playerName": "Rado", "month": 1, "day": 20 },
+    { "playerName": "Šimon", "month": 8, "day": 6 },
+    { "playerName": "Roman", "month": 7, "day": 23 },
+    { "playerName": "Peter", "month": null, "day": null },
+    { "playerName": "Braňo", "month": 2, "day": 4 }
+  ]
 }
