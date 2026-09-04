@@ -1,0 +1,252 @@
+const { randomUUID } = require('node:crypto');
+const { createSupabaseClient, requireAdmin } = require('./_lib/supabase');
+
+const ACCOUNT_TIME_ZONE = 'Europe/Bratislava';
+const periodFormatter = new Intl.DateTimeFormat('en', {
+  timeZone: ACCOUNT_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit'
+});
+
+function roundMoney(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function currentPeriod() {
+  const parts = Object.fromEntries(
+    periodFormatter.formatToParts(new Date())
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+  return `${parts.year}-${parts.month}`;
+}
+
+function occurrencePeriod(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = Object.fromEntries(
+    periodFormatter.formatToParts(date)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+  return `${parts.year}-${parts.month}`;
+}
+
+function parsePeriod(value) {
+  const period = String(value || currentPeriod()).trim();
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) return null;
+  return period;
+}
+
+function buildBalances(players, fines, adjustments, payments, period) {
+  const totals = new Map((players || []).map((player) => [String(player.id), {
+    player_id: player.id,
+    player_name: player.name,
+    opening_balance: 0,
+    charges: 0,
+    adjustments: 0,
+    paid: 0,
+    balance: 0
+  }]));
+
+  for (const fine of fines || []) {
+    const finePeriod = occurrencePeriod(fine.occurred_at);
+    if (!finePeriod || finePeriod > period) continue;
+    const row = totals.get(String(fine.player_id));
+    if (!row) continue;
+    if (finePeriod < period) row.opening_balance = roundMoney(row.opening_balance + Number(fine.amount));
+    else row.charges = roundMoney(row.charges + Number(fine.amount));
+  }
+  for (const adjustment of adjustments || []) {
+    const adjustmentPeriod = occurrencePeriod(adjustment.occurred_at);
+    if (!adjustmentPeriod || adjustmentPeriod > period) continue;
+    const row = totals.get(String(adjustment.player_id));
+    if (!row) continue;
+    if (adjustmentPeriod < period) {
+      row.opening_balance = roundMoney(row.opening_balance + Number(adjustment.amount));
+    } else {
+      row.adjustments = roundMoney(row.adjustments + Number(adjustment.amount));
+    }
+  }
+  for (const payment of payments || []) {
+    const paymentPeriod = String(payment.period_month || '').slice(0, 7);
+    if (!paymentPeriod || paymentPeriod > period) continue;
+    const row = totals.get(String(payment.player_id));
+    if (!row) continue;
+    if (paymentPeriod < period) {
+      row.opening_balance = roundMoney(row.opening_balance - Number(payment.amount));
+    } else {
+      row.paid = roundMoney(row.paid + Number(payment.amount));
+    }
+  }
+  for (const row of totals.values()) {
+    row.balance = roundMoney(row.opening_balance + row.charges + row.adjustments - row.paid);
+  }
+
+  return [...totals.values()].sort((left, right) => (
+    right.balance - left.balance || left.player_name.localeCompare(right.player_name)
+  ));
+}
+
+async function findOrCreateMonthlyPeriod(supabase, period) {
+  const periodStart = `${period}-01`;
+  const monthEnd = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0))
+    .toISOString().slice(0, 10);
+  const { data: seasons, error: seasonsError } = await supabase
+    .from('seasons')
+    .select('id, start_date, end_date, active')
+    .order('active', { ascending: false });
+  if (seasonsError) throw seasonsError;
+
+  const season = (seasons || []).find((item) => (
+    item.start_date <= monthEnd && (!item.end_date || item.end_date >= periodStart)
+  ));
+  if (!season) return { seasonId: null, monthlyPeriodId: null };
+
+  const { data: monthlyPeriod, error: monthlyPeriodError } = await supabase
+    .from('monthly_periods')
+    .upsert({ season_id: season.id, period_month: periodStart }, {
+      onConflict: 'season_id,period_month'
+    })
+    .select('id')
+    .single();
+  if (monthlyPeriodError) throw monthlyPeriodError;
+  return { seasonId: season.id, monthlyPeriodId: monthlyPeriod.id };
+}
+
+async function loadSnapshot(supabase, period) {
+  const [playersResult, finesResult, adjustmentsResult, paymentsResult] = await Promise.all([
+    supabase.from('players').select('id, name, active').eq('active', true).order('name'),
+    supabase.from('fines').select('player_id, amount, occurred_at'),
+    supabase.from('financial_adjustments').select('player_id, amount, occurred_at'),
+    supabase.from('payments')
+      .select('id, player_id, period_month, amount, currency, paid_at, created_at, reversed_at, player:players(name)')
+      .is('reversed_at', null)
+      .order('paid_at', { ascending: false })
+  ]);
+  const error = playersResult.error || finesResult.error || adjustmentsResult.error || paymentsResult.error;
+  if (error) throw error;
+
+  return {
+    period,
+    balances: buildBalances(
+      playersResult.data,
+      finesResult.data,
+      adjustmentsResult.data,
+      paymentsResult.data,
+      period
+    ),
+    payments: (paymentsResult.data || []).filter((payment) => (
+      String(payment.period_month || '').slice(0, 7) === period
+    ))
+  };
+}
+
+module.exports = async function handler(request, response) {
+  try {
+    if (request.method === 'GET') {
+      const period = parsePeriod(request.query?.period);
+      if (!period) return response.status(400).json({ error: 'Enter a valid month.' });
+      const supabase = createSupabaseClient();
+      return response.status(200).json(await loadSnapshot(supabase, period));
+    }
+
+    if (request.method !== 'POST') {
+      response.setHeader('Allow', 'GET, POST');
+      return response.status(405).json({ error: 'Method not allowed.' });
+    }
+
+    const auth = await requireAdmin(request);
+    if (auth.error) return response.status(auth.status).json({ error: auth.error });
+    const body = request.body || {};
+
+    if (body.action === 'reverse') {
+      const paymentId = Number(body.payment_id);
+      const reason = String(body.reason || '').trim();
+      if (!Number.isSafeInteger(paymentId) || paymentId <= 0 || !reason) {
+        return response.status(400).json({ error: 'Choose a payment and enter a reversal reason.' });
+      }
+      if (reason.length > 500) {
+        return response.status(400).json({ error: 'The reversal reason cannot exceed 500 characters.' });
+      }
+      const { data: payment, error: paymentError } = await auth.supabase
+        .from('payments')
+        .select('id, reversed_at')
+        .eq('id', paymentId)
+        .maybeSingle();
+      if (paymentError) throw paymentError;
+      if (!payment) return response.status(404).json({ error: 'Payment not found.' });
+      if (payment.reversed_at) return response.status(409).json({ error: 'This payment is already reversed.' });
+
+      const { error: reverseError } = await auth.supabase
+        .from('payments')
+        .update({
+          reversed_at: new Date().toISOString(),
+          reversed_by: auth.user.id,
+          reversal_reason: reason
+        })
+        .eq('id', paymentId)
+        .is('reversed_at', null);
+      if (reverseError) throw reverseError;
+      return response.status(200).json({ message: 'Payment reversed. The original record was kept.' });
+    }
+
+    const playerId = Number(body.player_id);
+    const amount = Number(body.amount);
+    const period = parsePeriod(body.period_month);
+    const method = String(body.payment_method || '').trim();
+    const note = String(body.admin_note || '').trim();
+    const paidAt = new Date(body.paid_at || Date.now());
+    if (!Number.isSafeInteger(playerId) || playerId <= 0) {
+      return response.status(400).json({ error: 'Select an active player.' });
+    }
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) {
+      return response.status(400).json({ error: 'Enter a positive payment amount.' });
+    }
+    if (!period) return response.status(400).json({ error: 'Enter a valid payment month.' });
+    if (!['cash', 'bank_transfer', 'other'].includes(method)) {
+      return response.status(400).json({ error: 'Select cash, bank transfer, or other.' });
+    }
+    if (Number.isNaN(paidAt.getTime())) return response.status(400).json({ error: 'Enter a valid payment date.' });
+    if (note.length > 500) return response.status(400).json({ error: 'The note cannot exceed 500 characters.' });
+
+    const { data: player, error: playerError } = await auth.supabase
+      .from('players')
+      .select('id, active')
+      .eq('id', playerId)
+      .maybeSingle();
+    if (playerError) throw playerError;
+    if (!player?.active) return response.status(400).json({ error: 'Select an active player.' });
+
+    const links = await findOrCreateMonthlyPeriod(auth.supabase, period);
+    const { error: insertError } = await auth.supabase.from('payments').insert({
+      player_id: playerId,
+      season_id: links.seasonId,
+      monthly_period_id: links.monthlyPeriodId,
+      period_month: `${period}-01`,
+      amount: roundMoney(amount),
+      currency: 'EUR',
+      payment_method: method,
+      paid_at: paidAt.toISOString(),
+      admin_note: note || null,
+      idempotency_key: randomUUID(),
+      created_by: auth.user.id
+    });
+    if (insertError) throw insertError;
+
+    return response.status(201).json({ message: 'Payment recorded.' });
+  } catch (error) {
+    console.error(error);
+    const errorText = String(error.message || '');
+    const missingTable = ['42P01', 'PGRST205'].includes(error?.code)
+      && errorText.toLowerCase().includes('payments');
+    return response.status(500).json({
+      error: missingTable
+        ? 'Payments are not configured yet. Run database/007-player-payment-ledger.sql in Supabase.'
+        : (error.message || 'Unable to process payments.')
+    });
+  }
+};
+
+module.exports.buildBalances = buildBalances;
+module.exports.occurrencePeriod = occurrencePeriod;

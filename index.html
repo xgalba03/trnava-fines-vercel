@@ -253,6 +253,34 @@
         max-height: 28rem;
       }
 
+      .balance-list {
+        max-height: 24rem;
+      }
+
+      .balance-value {
+        white-space: nowrap;
+      }
+
+      .balance-value.credit {
+        color: #137333;
+      }
+
+      .balance-value.due {
+        color: #a52714;
+      }
+
+      .month-control {
+        display: grid;
+        gap: 0.2rem;
+        color: #52606d;
+        font-size: 0.75rem;
+      }
+
+      .month-control input {
+        min-height: 2.25rem;
+        padding: 0.3rem 0.5rem;
+      }
+
       .event-list {
         max-height: 22rem;
       }
@@ -335,6 +363,7 @@
         }
 
         #fine-form,
+        #payment-form,
         #event-form,
         #obligation-form {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -417,6 +446,44 @@
             <button class="full-width" type="submit">Add fine</button>
           </form>
         </div>
+        <div id="payment-entry" hidden>
+          <h3>Record a payment</h3>
+          <p>Record money received from a player for their monthly account balance.</p>
+          <form id="payment-form">
+            <label class="form-field">
+              <span>Player</span>
+              <select name="player_id" required disabled>
+                <option value="">Loading players...</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Month being settled</span>
+              <input name="period_month" type="month" required />
+            </label>
+            <label class="form-field">
+              <span>Amount received (€)</span>
+              <input name="amount" type="number" min="0.01" max="1000000" step="0.01" required />
+            </label>
+            <label class="form-field">
+              <span>Received at</span>
+              <input name="paid_at" type="datetime-local" required />
+            </label>
+            <label class="form-field">
+              <span>Method</span>
+              <select name="payment_method" required>
+                <option value="cash">Cash</option>
+                <option value="bank_transfer">Bank transfer</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Private admin note (optional)</span>
+              <input name="admin_note" maxlength="500" placeholder="Reference or correction note" />
+            </label>
+            <button class="full-width" type="submit">Record payment</button>
+          </form>
+          <p id="payment-status" role="status"></p>
+        </div>
         <section id="password-settings" hidden>
           <h3>Password</h3>
           <p>Set or change the password for future admin logins.</p>
@@ -491,6 +558,22 @@
           <p id="status" role="status"></p>
           <ul id="fines" class="scroll-list fines-list" data-empty="No fines recorded yet."></ul>
         </section>
+        <section id="account-section" class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Monthly balances</h2>
+              <span class="section-subtitle">Fines and credits minus payments received</span>
+            </div>
+            <label class="month-control">
+              <span>Month</span>
+              <input id="balance-period" type="month" aria-label="Balance month" />
+            </label>
+          </div>
+          <p id="account-status" role="status"></p>
+          <ul id="balances" class="scroll-list balance-list" data-empty="No player balances available."></ul>
+          <h3>Payments received</h3>
+          <ul id="payments" class="scroll-list" data-empty="No payments recorded for this month."></ul>
+        </section>
       </section>
     </main>
     <dialog id="login-dialog">
@@ -540,6 +623,13 @@
       const calculation = document.querySelector('#calculation');
       const status = document.querySelector('#status');
       const fines = document.querySelector('#fines');
+      const paymentEntry = document.querySelector('#payment-entry');
+      const paymentForm = document.querySelector('#payment-form');
+      const paymentStatus = document.querySelector('#payment-status');
+      const balancePeriod = document.querySelector('#balance-period');
+      const balanceList = document.querySelector('#balances');
+      const paymentList = document.querySelector('#payments');
+      const accountStatus = document.querySelector('#account-status');
 
       const adminOnly = document.querySelectorAll('.admin-only');
       const syncSeedButton = document.querySelector('#sync-seed');
@@ -557,6 +647,7 @@
       const obligationSubmit = document.querySelector('#obligation-submit');
       const objectionList = document.querySelector('#objections');
       const finesSection = document.querySelector('#fines-section');
+      const accountSection = document.querySelector('#account-section');
       const eventSection = document.querySelector('#event-section');
       const loginDialog = document.querySelector('#login-dialog');
       const adminDialog = document.querySelector('#admin-dialog');
@@ -567,9 +658,11 @@
 
       // Keep the public dashboard focused while retaining all admin forms.
       app.insertBefore(finesSection, eventSection);
+      app.insertBefore(accountSection, eventSection);
       loginDialogContent.append(auth);
       adminDialogContent.append(
         fineEntry,
+        paymentEntry,
         document.querySelector('#event-admin'),
         document.querySelector('#obligation-admin'),
         document.querySelector('#admin-tools'),
@@ -590,6 +683,7 @@
         isAdmin = loggedIn;
         auth.hidden = loggedIn || !showForm;
         fineEntry.hidden = !loggedIn;
+        paymentEntry.hidden = !loggedIn;
         passwordSettings.hidden = !loggedIn;
         adminOnly.forEach((element) => { element.hidden = !loggedIn; });
         login.hidden = loggedIn;
@@ -601,6 +695,7 @@
         if (eventList.childElementCount) loadEvents().catch((error) => { eventStatus.textContent = error.message; });
         if (obligationList.childElementCount) loadObligations().catch((error) => { obligationStatus.textContent = error.message; });
         if (objectionList.childElementCount) loadObjections().catch((error) => { status.textContent = error.message; });
+        if (balanceList.childElementCount) loadPayments().catch((error) => { accountStatus.textContent = error.message; });
       }
 
       function saveSession(session) {
@@ -743,6 +838,14 @@
         occurredAtInput.value = localTime.toISOString().slice(0, 16);
       }
 
+      function setCurrentPaymentValues() {
+        const now = new Date();
+        const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        paymentForm.elements.paid_at.value = localTime.toISOString().slice(0, 16);
+        if (!balancePeriod.value) balancePeriod.value = localTime.toISOString().slice(0, 7);
+        paymentForm.elements.period_month.value = balancePeriod.value;
+      }
+
       function updateFineCalculation(resetAmount = true) {
         const fineType = fineTypesById.get(fineTypeSelect.value);
         if (!fineType) {
@@ -838,7 +941,7 @@
               await runAdminAction('/api/objections', {
                 action: 'submit', fine_id: fine.id, reason
               }, status);
-              await Promise.all([loadFines(), loadObjections()]);
+              await Promise.all([loadFines(), loadPayments(), loadObjections()]);
             }));
           }
           item.append(description, right);
@@ -851,6 +954,90 @@
         const data = await readJson(response);
         if (!response.ok) throw new Error(data.error || 'Unable to load fines.');
         render(data.fines || []);
+      }
+
+      function renderBalances(items) {
+        balanceList.replaceChildren(...items.map((balance) => {
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          copy.className = 'item-copy';
+          const title = document.createElement('strong');
+          title.textContent = balance.player_name;
+          const detail = document.createElement('span');
+          detail.className = 'meta';
+          const adjustmentText = Number(balance.adjustments) === 0
+            ? ''
+            : ` · adjustments ${Number(balance.adjustments) < 0 ? '−' : '+'}€${Math.abs(Number(balance.adjustments)).toFixed(2)}`;
+          const openingText = Number(balance.opening_balance) === 0
+            ? ''
+            : `carried ${Number(balance.opening_balance) < 0 ? '−' : ''}€${Math.abs(Number(balance.opening_balance)).toFixed(2)} · `;
+          detail.textContent = `${openingText}fines €${Number(balance.charges).toFixed(2)}${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}`;
+          copy.append(title, detail);
+
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          const value = document.createElement('strong');
+          value.className = `balance-value ${Number(balance.balance) > 0 ? 'due' : 'credit'}`;
+          value.textContent = Number(balance.balance) > 0
+            ? `€${Number(balance.balance).toFixed(2)} due`
+            : Number(balance.balance) < 0
+              ? `€${Math.abs(Number(balance.balance)).toFixed(2)} credit`
+              : 'Settled';
+          actions.append(value);
+          if (isAdmin) {
+            actions.append(actionButton('Record', () => {
+              paymentForm.elements.player_id.value = String(balance.player_id);
+              paymentForm.elements.period_month.value = balancePeriod.value;
+              paymentForm.elements.amount.value = Number(balance.balance) > 0
+                ? Number(balance.balance).toFixed(2)
+                : '';
+              setCurrentPaymentValues();
+              paymentStatus.textContent = '';
+              openAdminAt(paymentEntry);
+            }));
+          }
+          item.append(copy, actions);
+          return item;
+        }));
+      }
+
+      function renderPayments(items) {
+        paymentList.replaceChildren(...items.map((payment) => {
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          copy.className = 'item-copy';
+          const player = related(payment.player);
+          const title = document.createElement('strong');
+          title.textContent = `${player?.name || 'Unknown player'} — €${Number(payment.amount).toFixed(2)}`;
+          const detail = document.createElement('span');
+          detail.className = 'meta';
+          detail.textContent = `Received ${dateLabel(payment.paid_at)}`;
+          copy.append(title, detail);
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          if (isAdmin) {
+            actions.append(actionButton('Reverse', async () => {
+              const reason = window.prompt('Reason for reversing this payment:');
+              if (!reason?.trim()) return;
+              await runAdminAction('/api/payments', {
+                action: 'reverse', payment_id: payment.id, reason
+              }, accountStatus);
+              await loadPayments();
+            }));
+          }
+          item.append(copy, actions);
+          return item;
+        }));
+      }
+
+      async function loadPayments() {
+        const period = balancePeriod.value || new Date().toISOString().slice(0, 7);
+        const response = await fetch(`/api/payments?period=${encodeURIComponent(period)}`);
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load account balances.');
+        renderBalances(data.balances || []);
+        renderPayments(data.payments || []);
+        accountStatus.textContent = '';
       }
 
       async function loadPlayers() {
@@ -873,6 +1060,11 @@
           option('', 'Select player'),
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
+        paymentForm.elements.player_id.replaceChildren(
+          option('', 'Select player'),
+          ...[...playersById.values()].map((player) => option(player.id, player.name))
+        );
+        paymentForm.elements.player_id.disabled = playerOptions.length === 0;
         eventForm.elements.player_ids.replaceChildren(
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
@@ -1104,7 +1296,7 @@
               actions.append(actionButton(decision === 'accepted' ? 'Accept' : 'Reject', async () => {
                 const note = window.prompt('Optional decision note:') || '';
                 await runAdminAction('/api/objections', { action: 'resolve', objection_id: objection.id, decision, note }, status);
-                await Promise.all([loadObjections(), loadFines()]);
+                await Promise.all([loadObjections(), loadFines(), loadPayments()]);
               }, decision !== 'accepted'));
             }
           }
@@ -1138,6 +1330,28 @@
       });
       eventReset.addEventListener('click', resetEventForm);
       obligationReset.addEventListener('click', resetObligationForm);
+      balancePeriod.addEventListener('change', () => {
+        paymentForm.elements.period_month.value = balancePeriod.value;
+        loadPayments().catch((error) => { accountStatus.textContent = error.message; });
+      });
+
+      paymentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        try {
+          const body = Object.fromEntries(new FormData(paymentForm));
+          body.paid_at = new Date(body.paid_at).toISOString();
+          await runAdminAction('/api/payments', body, paymentStatus);
+          paymentForm.reset();
+          setCurrentPaymentValues();
+          await loadPayments();
+        } catch (error) {
+          paymentStatus.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
 
       eventForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -1222,7 +1436,7 @@
           authForm.reset();
           authStatus.textContent = '';
           status.textContent = 'Logged in as administrator.';
-          await Promise.all([loadFines(), loadEvents(), loadObligations(), loadObjections()]);
+          await Promise.all([loadFines(), loadPayments(), loadEvents(), loadObligations(), loadObjections()]);
         } catch (error) {
           authStatus.textContent = error.message;
         } finally {
@@ -1319,7 +1533,7 @@
             body: JSON.stringify({ refresh_token: previousRefreshToken })
           });
         } finally {
-          loadFines().catch((error) => { status.textContent = error.message; });
+          Promise.all([loadFines(), loadPayments()]).catch((error) => { status.textContent = error.message; });
         }
       });
 
@@ -1350,6 +1564,7 @@
           setCurrentOccurredAt();
           updateFineCalculation();
           render(data.fines || []);
+          await loadPayments();
           status.textContent = 'Saved.';
         } catch (error) {
           status.textContent = error.message;
@@ -1380,9 +1595,10 @@
         else await validateSession();
 
         setCurrentOccurredAt();
+        setCurrentPaymentValues();
         obligationForm.elements.trigger_date.value = new Date().toISOString().slice(0, 10);
         await Promise.all([
-          loadPlayers(), loadFineTypes(), loadFines(), loadEvents(),
+          loadPlayers(), loadFineTypes(), loadFines(), loadPayments(), loadEvents(),
           loadObligations(), loadObjections()
         ]);
       }

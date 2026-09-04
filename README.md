@@ -25,11 +25,14 @@ logging in with email and password.
 7. Run [`database/006-recurring-important-team-events.sql`](database/006-recurring-important-team-events.sql)
    to add weekly practice metadata, cancellation reasons, and explicit practice,
    match, team-dinner and other event types.
-8. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+8. Run [`database/007-player-payment-ledger.sql`](database/007-player-payment-ledger.sql)
+   to add monthly player payments, calculated balances, and reversible payment
+   records. This migration does not change or mark individual fines.
+9. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-9. Import this repository into Vercel.
-10. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+10. Import this repository into Vercel.
+11. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -40,7 +43,7 @@ logging in with email and password.
    - `SITE_URL`: the production HTTPS Vercel URL, without a trailing path.
    - `CRON_SECRET`: a long random server-only secret used by Vercel when it runs
      the daily obligation penalty job.
-11. Redeploy after changing environment variables.
+12. Redeploy after changing environment variables.
 
 In **Supabase -> Authentication -> URL Configuration**, set the Site URL and an
 allowed redirect URL to the deployed site. This ensures the one-time password
@@ -142,3 +145,17 @@ fee. Accepting the objection voids the original fine and records a €2 negative
 financial adjustment (account credit); it is never represented as a cash payout.
 Rejecting it leaves the original fine and filing fee in place. Historical fine
 snapshots remain unchanged even if a catalogue type is edited later.
+
+## Monthly payments
+
+The monthly balance is calculated per player as active fines plus signed account
+adjustments, minus payments recorded for that month. Payments apply to the
+player's monthly account rather than to individual fines, so one cash or bank
+transfer can settle the whole amount. An overpayment appears as account credit.
+Unpaid balances and credits are carried into the following month automatically.
+
+Log in and use **Admin -> Record a payment**, or select **Record** next to a
+player's monthly balance. Payment method and the private administrator note are
+not returned to public visitors. If a payment was entered incorrectly, reverse
+it from the payment list; the original record remains in Supabase for the audit
+trail and no longer reduces the player's balance.
