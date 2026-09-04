@@ -268,12 +268,12 @@
               <input name="is_match_day" type="checkbox" />
               <span id="match-day-label">Match day</span>
             </label>
-            <label id="quantity-field" class="form-field" hidden>
+            <label id="quantity-field" class="form-field">
               <span id="quantity-label">Quantity</span>
               <input name="quantity" type="number" min="1" step="1" value="1" />
             </label>
             <label class="form-field">
-              <span>Final amount (€)</span>
+              <span id="amount-label">Final amount (€)</span>
               <input name="amount" type="number" min="0.01" step="0.01" required />
             </label>
             <label class="form-field">
@@ -376,6 +376,7 @@
       const quantityLabel = document.querySelector('#quantity-label');
       const quantityInput = form.elements.quantity;
       const amountInput = form.elements.amount;
+      const amountLabel = document.querySelector('#amount-label');
       const occurredAtInput = form.elements.occurred_at;
       const noteInput = form.elements.note;
       const noteLabel = document.querySelector('#note-label');
@@ -558,8 +559,13 @@
       function updateFineCalculation(resetAmount = true) {
         const fineType = fineTypesById.get(fineTypeSelect.value);
         if (!fineType) {
-          quantityField.hidden = true;
-          quantityInput.required = false;
+          quantityField.hidden = false;
+          quantityInput.required = true;
+          quantityInput.min = '1';
+          quantityInput.max = '100';
+          quantityInput.step = '1';
+          quantityLabel.textContent = 'Quantity';
+          amountLabel.textContent = 'Final amount (€)';
           matchDayInput.disabled = false;
           matchDayLabel.textContent = 'Match day';
           noteInput.required = false;
@@ -585,14 +591,17 @@
           : 'Additional context';
 
         const usesQuantity = fineType.calculation_mode === 'per_unit';
-        quantityField.hidden = !usesQuantity;
-        quantityInput.required = usesQuantity;
-        if (!usesQuantity) quantityInput.value = '1';
+        quantityField.hidden = false;
+        quantityInput.required = true;
+        quantityInput.min = '1';
+        quantityInput.max = usesQuantity ? '10000' : '100';
+        quantityInput.step = '1';
         quantityLabel.textContent = usesQuantity
           ? `Number of ${fineType.unit_name}s`
-          : 'Quantity';
+          : 'Number of separate fines';
+        amountLabel.textContent = usesQuantity ? 'Final amount (€)' : 'Amount per fine (€)';
 
-        const quantity = usesQuantity ? Number(quantityInput.value) : 1;
+        const quantity = Number(quantityInput.value);
         const rate = Number(fineType.default_amount);
         const multiplier = matchDayInput.checked && fineType.double_on_match_day
           ? Number(fineType.match_day_multiplier)
@@ -603,14 +612,16 @@
           return;
         }
 
-        const base = roundMoney(rate * quantity);
-        const total = roundMoney(base * multiplier);
+        const base = roundMoney(rate * (usesQuantity ? quantity : 1));
+        const amountPerFine = roundMoney(base * multiplier);
+        const total = roundMoney(amountPerFine * (usesQuantity ? 1 : quantity));
         const unitText = usesQuantity
           ? `${quantity} ${fineType.unit_name}${quantity === 1 ? '' : 's'} × €${rate.toFixed(2)}`
-          : `€${rate.toFixed(2)}`;
+          : `${quantity} separate fine${quantity === 1 ? '' : 's'} × €${rate.toFixed(2)}`;
         const multiplierText = multiplier > 1 ? ` × match-day ${multiplier}` : '';
-        calculation.textContent = `${unitText}${multiplierText} = €${total.toFixed(2)}`;
-        if (resetAmount) amountInput.value = total.toFixed(2);
+        const totalText = usesQuantity || quantity === 1 ? '' : ` total €${total.toFixed(2)}`;
+        calculation.textContent = `${unitText}${multiplierText} = €${amountPerFine.toFixed(2)}${totalText}`;
+        if (resetAmount) amountInput.value = amountPerFine.toFixed(2);
       }
 
       function render(items) {
@@ -920,7 +931,10 @@
         obligationSubmit.textContent = 'Add obligation';
       }
 
-      fineTypeSelect.addEventListener('change', () => updateFineCalculation());
+      fineTypeSelect.addEventListener('change', () => {
+        quantityInput.value = '1';
+        updateFineCalculation();
+      });
       quantityInput.addEventListener('input', () => updateFineCalculation());
       matchDayInput.addEventListener('change', () => updateFineCalculation());
       eventForm.elements.attendance_scope.addEventListener('change', () => {

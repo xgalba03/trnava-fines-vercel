@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { randomUUID } = require('node:crypto');
 
 function getClient(key, token) {
   const url = process.env.SUPABASE_URL;
@@ -124,10 +125,17 @@ module.exports = async function handler(request, response) {
       return response.status(400).json({ error: 'This fine can only be issued for a match day.' });
     }
 
-    const quantity = fineType.calculation_mode === 'per_unit' ? Number(quantityValue) : 1;
-    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 10000) {
+    const isPerUnit = fineType.calculation_mode === 'per_unit';
+    const requestedQuantity = Number(quantityValue || 1);
+    const quantity = isPerUnit ? requestedQuantity : 1;
+    const batchCount = isPerUnit ? 1 : requestedQuantity;
+    if (!Number.isFinite(requestedQuantity) || requestedQuantity <= 0
+      || (isPerUnit && requestedQuantity > 10000)
+      || (!isPerUnit && (!Number.isSafeInteger(requestedQuantity) || requestedQuantity > 100))) {
       return response.status(400).json({
-        error: `Enter a positive number of ${fineType.unit_name || 'units'}.`
+        error: isPerUnit
+          ? `Enter a positive number of ${fineType.unit_name || 'units'}.`
+          : 'Enter a whole-number quantity from 1 to 100.'
       });
     }
 
@@ -155,9 +163,7 @@ module.exports = async function handler(request, response) {
       return response.status(400).json({ error: 'Enter a valid date and time.' });
     }
 
-    const { error: insertError } = await supabase
-      .from('fines')
-      .insert({
+    const fineValues = {
         user_id: user.id,
         player_id: playerId,
         fine_type_id: fineTypeId,
@@ -181,7 +187,22 @@ module.exports = async function handler(request, response) {
         occurred_at: occurredAt.toISOString(),
         type: 'normal',
         source: 'manual'
-      });
+      };
+    let insertValues = fineValues;
+    if (batchCount > 1) {
+      const batchId = randomUUID();
+      insertValues = Array.from({ length: batchCount }, (_, index) => ({
+        ...fineValues,
+        metadata: {
+          batch_id: batchId,
+          batch_size: batchCount,
+          batch_index: index + 1
+        }
+      }));
+    }
+    const { error: insertError } = await supabase
+      .from('fines')
+      .insert(insertValues);
     if (insertError) {
       if (insertError.code === '42501') {
         throw new Error('Database permissions are not configured for player fines. Run database/002-players-and-fine-events.sql in Supabase.');

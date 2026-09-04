@@ -90,6 +90,10 @@ The Add Fine form reads players and fine types from Supabase. Its calculated
 amount can be overridden by the administrator; the original calculation and an
 override flag remain in the fine event for later statistics. Supabase remains
 the runtime source of truth, and fine history stays exclusively in the database.
+For per-unit fines, quantity is the measured number of units (for example,
+minutes late) and produces one fine event. For fixed fines, quantity is the
+number of occurrences and one submission creates that many separate fine events
+with a shared batch identifier.
 
 After editing seed JSON and deploying it, log in and select **Sync seed files**.
 The sync updates matching catalogue/calendar records by their stable codes; it

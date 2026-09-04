@@ -231,3 +231,90 @@ test('an admin fine records the selected active player', async () => {
   assert.equal(insertedFine.source, 'manual');
   assert.equal(insertedFine.occurred_at, '2026-09-04T10:00:00.000Z');
 });
+
+test('a fixed fine quantity creates separate fine events in one batch', async () => {
+  let insertedFines;
+
+  clientFactory = (_url, key, options) => {
+    if (options?.global?.headers?.Authorization === 'Bearer access') {
+      return {
+        auth: {
+          getUser: async () => ({
+            data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from(table) {
+          if (table === 'players') {
+            return {
+              select: () => ({
+                eq: () => ({ maybeSingle: async () => ({ data: { id: 7, active: true }, error: null }) })
+              })
+            };
+          }
+          if (table === 'fine_types') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({
+                    data: {
+                      id: 8,
+                      code: 'loud-fart',
+                      name: 'Loud fart',
+                      description: 'A loud fart.',
+                      default_amount: 1,
+                      category: 'Training',
+                      calculation_mode: 'fixed',
+                      unit_name: null,
+                      match_day_only: false,
+                      double_on_match_day: true,
+                      match_day_multiplier: 2,
+                      active: true
+                    },
+                    error: null
+                  })
+                })
+              })
+            };
+          }
+          assert.equal(table, 'fines');
+          return {
+            insert(values) {
+              insertedFines = values;
+              return Promise.resolve({ error: null });
+            }
+          };
+        }
+      };
+    }
+
+    assert.equal(key, 'anon-key');
+    return {
+      from: () => ({
+        select: () => ({ order: async () => ({ data: [], error: null }) })
+      })
+    };
+  };
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: {
+      player_id: '7',
+      fine_type_id: '8',
+      quantity: '3',
+      is_match_day: false,
+      amount: '1',
+      occurred_at: '2026-09-04T10:00:00Z'
+    }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(insertedFines.length, 3);
+  assert.deepEqual(insertedFines.map((fine) => fine.amount), [1, 1, 1]);
+  assert.deepEqual(insertedFines.map((fine) => fine.quantity), [1, 1, 1]);
+  assert.deepEqual(insertedFines.map((fine) => fine.metadata.batch_index), [1, 2, 3]);
+  assert.equal(insertedFines[0].metadata.batch_size, 3);
+  assert.equal(insertedFines[0].metadata.batch_id, insertedFines[2].metadata.batch_id);
+});
