@@ -88,5 +88,19 @@
     "cancellations": []
     }
   ],
-  "events": []
+  "events": [
+      {
+      "code": "match-2026-10-17-away",
+      "name": "Prešov vonku",
+      "type": "match",
+      "startsAt": "2026-10-17T18:00:00+02:00",
+      "endsAt": "2026-10-17T20:00:00+02:00",
+      "attendanceScope": "full_team",
+      "playerNames": [],
+      "status": "scheduled",
+      "cancellationReason": null,
+      "location": "Prešov",
+      "notes": ""
+    }
+  ]
 }
