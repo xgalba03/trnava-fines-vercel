@@ -269,6 +269,27 @@
         color: #a52714;
       }
 
+      .status-pill {
+        width: fit-content;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        background: #edf1f4;
+        color: #52606d;
+        font-size: 0.72rem;
+        font-weight: 650;
+      }
+
+      .status-pill.overdue {
+        background: #fce8e6;
+        color: #a52714;
+      }
+
+      .status-pill.settled,
+      .status-pill.credit {
+        background: #e6f4ea;
+        color: #137333;
+      }
+
       .month-control {
         display: grid;
         gap: 0.2rem;
@@ -364,6 +385,7 @@
 
         #fine-form,
         #payment-form,
+        #settlement-form,
         #event-form,
         #obligation-form {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -484,6 +506,23 @@
           </form>
           <p id="payment-status" role="status"></p>
         </div>
+        <div id="settlement-entry" hidden>
+          <h3>Monthly deadline</h3>
+          <p>Enter the date the club payment arrived. The player deadline is calculated automatically.</p>
+          <form id="settlement-form">
+            <label class="form-field">
+              <span>Settlement month</span>
+              <input name="period_month" type="month" required />
+            </label>
+            <label class="form-field">
+              <span>Club payment received</span>
+              <input name="club_payment_date" type="date" required />
+            </label>
+            <p id="settlement-calculation" class="full-width" role="status"></p>
+            <button class="full-width" type="submit">Save monthly deadline</button>
+          </form>
+          <p id="settlement-status" role="status"></p>
+        </div>
         <section id="password-settings" hidden>
           <h3>Password</h3>
           <p>Set or change the password for future admin logins.</p>
@@ -569,6 +608,7 @@
               <input id="balance-period" type="month" aria-label="Balance month" />
             </label>
           </div>
+          <p id="settlement-summary" class="meta"></p>
           <p id="account-status" role="status"></p>
           <ul id="balances" class="scroll-list balance-list" data-empty="No player balances available."></ul>
           <h3>Payments received</h3>
@@ -626,6 +666,11 @@
       const paymentEntry = document.querySelector('#payment-entry');
       const paymentForm = document.querySelector('#payment-form');
       const paymentStatus = document.querySelector('#payment-status');
+      const settlementEntry = document.querySelector('#settlement-entry');
+      const settlementForm = document.querySelector('#settlement-form');
+      const settlementCalculation = document.querySelector('#settlement-calculation');
+      const settlementStatus = document.querySelector('#settlement-status');
+      const settlementSummary = document.querySelector('#settlement-summary');
       const balancePeriod = document.querySelector('#balance-period');
       const balanceList = document.querySelector('#balances');
       const paymentList = document.querySelector('#payments');
@@ -663,6 +708,7 @@
       adminDialogContent.append(
         fineEntry,
         paymentEntry,
+        settlementEntry,
         document.querySelector('#event-admin'),
         document.querySelector('#obligation-admin'),
         document.querySelector('#admin-tools'),
@@ -674,6 +720,7 @@
       const playersById = new Map();
       const eventsById = new Map();
       let isAdmin = false;
+      let settlementDeadlineDays = 5;
 
       let accessToken = localStorage.getItem('trnava_access_token');
       let refreshToken = localStorage.getItem('trnava_refresh_token');
@@ -684,6 +731,7 @@
         auth.hidden = loggedIn || !showForm;
         fineEntry.hidden = !loggedIn;
         paymentEntry.hidden = !loggedIn;
+        settlementEntry.hidden = !loggedIn;
         passwordSettings.hidden = !loggedIn;
         adminOnly.forEach((element) => { element.hidden = !loggedIn; });
         login.hidden = loggedIn;
@@ -810,6 +858,12 @@
         }).format(new Date(value));
       }
 
+      function dateOnlyLabel(value) {
+        if (!value) return 'not set';
+        return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+          .format(new Date(`${value}T12:00:00`));
+      }
+
       function option(value, label) {
         const element = document.createElement('option');
         element.value = String(value);
@@ -844,6 +898,18 @@
         paymentForm.elements.paid_at.value = localTime.toISOString().slice(0, 16);
         if (!balancePeriod.value) balancePeriod.value = localTime.toISOString().slice(0, 7);
         paymentForm.elements.period_month.value = balancePeriod.value;
+        settlementForm.elements.period_month.value = balancePeriod.value;
+      }
+
+      function updateSettlementCalculation() {
+        const dateValue = settlementForm.elements.club_payment_date.value;
+        if (!dateValue) {
+          settlementCalculation.textContent = `Deadline will be ${settlementDeadlineDays} days after the club payment.`;
+          return;
+        }
+        const deadline = new Date(`${dateValue}T12:00:00Z`);
+        deadline.setUTCDate(deadline.getUTCDate() + settlementDeadlineDays);
+        settlementCalculation.textContent = `Player payment deadline: ${dateOnlyLabel(deadline.toISOString().slice(0, 10))}`;
       }
 
       function updateFineCalculation(resetAmount = true) {
@@ -972,7 +1038,17 @@
             ? ''
             : `carried ${Number(balance.opening_balance) < 0 ? '−' : ''}€${Math.abs(Number(balance.opening_balance)).toFixed(2)} · `;
           detail.textContent = `${openingText}fines €${Number(balance.charges).toFixed(2)}${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}`;
-          copy.append(title, detail);
+          const statusBadge = document.createElement('span');
+          const statusLabels = {
+            no_balance: 'No balance',
+            due: 'Payment due',
+            overdue: 'Overdue',
+            settled: 'Settled',
+            credit: 'Account credit'
+          };
+          statusBadge.className = `status-pill ${balance.settlement_status || 'due'}`;
+          statusBadge.textContent = statusLabels[balance.settlement_status] || 'Payment due';
+          copy.append(title, statusBadge, detail);
 
           const actions = document.createElement('div');
           actions.className = 'actions';
@@ -999,6 +1075,20 @@
           item.append(copy, actions);
           return item;
         }));
+      }
+
+      function renderMonthlyPeriod(monthlyPeriod) {
+        settlementDeadlineDays = Number(monthlyPeriod?.days_after_club_payment || 5);
+        settlementForm.elements.period_month.value = balancePeriod.value;
+        settlementForm.elements.club_payment_date.value = monthlyPeriod?.club_payment_date || '';
+        if (monthlyPeriod?.club_payment_date && monthlyPeriod?.payment_deadline) {
+          settlementSummary.textContent = `Club payment received ${dateOnlyLabel(monthlyPeriod.club_payment_date)} · Player deadline ${dateOnlyLabel(monthlyPeriod.payment_deadline)}`;
+        } else if (monthlyPeriod?.season_id) {
+          settlementSummary.textContent = 'The club payment date and player deadline have not been set for this month.';
+        } else {
+          settlementSummary.textContent = 'This month is outside the configured seasons.';
+        }
+        updateSettlementCalculation();
       }
 
       function renderPayments(items) {
@@ -1037,6 +1127,7 @@
         if (!response.ok) throw new Error(data.error || 'Unable to load account balances.');
         renderBalances(data.balances || []);
         renderPayments(data.payments || []);
+        renderMonthlyPeriod(data.monthly_period);
         accountStatus.textContent = '';
       }
 
@@ -1332,7 +1423,27 @@
       obligationReset.addEventListener('click', resetObligationForm);
       balancePeriod.addEventListener('change', () => {
         paymentForm.elements.period_month.value = balancePeriod.value;
+        settlementForm.elements.period_month.value = balancePeriod.value;
         loadPayments().catch((error) => { accountStatus.textContent = error.message; });
+      });
+      settlementForm.elements.club_payment_date.addEventListener('input', updateSettlementCalculation);
+
+      settlementForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        try {
+          const body = Object.fromEntries(new FormData(settlementForm));
+          body.action = 'configure_period';
+          await runAdminAction('/api/payments', body, settlementStatus);
+          balancePeriod.value = body.period_month;
+          paymentForm.elements.period_month.value = body.period_month;
+          await loadPayments();
+        } catch (error) {
+          settlementStatus.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
       });
 
       paymentForm.addEventListener('submit', async (event) => {

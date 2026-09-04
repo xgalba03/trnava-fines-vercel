@@ -57,7 +57,7 @@ test('monthly balances combine fines, credits, and player-level payments', async
     {
       id: 29,
       player_id: 7,
-      amount: 55,
+      amount: 52,
       period_month: '2026-08-01',
       paid_at: '2026-08-20T10:00:00Z',
       player: { name: 'Alex' }
@@ -87,6 +87,28 @@ test('monthly balances combine fines, credits, and player-level payments', async
             { player_id: 7, amount: -2, occurred_at: '2026-09-11T10:00:00Z' }
           ]) };
         }
+        if (table === 'seasons') {
+          return {
+            select: () => ({
+              order: () => resolved([{
+                id: 2, start_date: '2026-08-01', end_date: '2027-06-30', active: true
+              }])
+            })
+          };
+        }
+        if (table === 'monthly_periods') {
+          return {
+            select: () => ({
+              eq: () => resolved([{
+                id: 9,
+                season_id: 2,
+                period_month: '2026-09-01',
+                club_payment_date: '2026-08-27',
+                payment_deadline: '2026-09-01'
+              }])
+            })
+          };
+        }
         assert.equal(table, 'payments');
         return {
           select: () => ({
@@ -101,14 +123,23 @@ test('monthly balances combine fines, credits, and player-level payments', async
   await handler({ method: 'GET', headers: {}, query: { period: '2026-09' } }, response);
 
   assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body.monthly_period, {
+    id: 9,
+    season_id: 2,
+    period_month: '2026-09-01',
+    club_payment_date: '2026-08-27',
+    payment_deadline: '2026-09-01',
+    days_after_club_payment: 5
+  });
   assert.deepEqual(response.body.balances, [{
     player_id: 7,
     player_name: 'Alex',
-    opening_balance: -5,
+    opening_balance: -2,
     charges: 10,
     adjustments: -2,
     paid: 4,
-    balance: -1
+    balance: 2,
+    settlement_status: 'overdue'
   }]);
   assert.deepEqual(response.body.payments, [activePayments[0]]);
 });
@@ -234,4 +265,59 @@ test('admin reverses a payment while preserving its record', async () => {
   assert.equal(reversedValues.reversed_by, 'admin-id');
   assert.equal(reversedValues.reversal_reason, 'Entered twice');
   assert.match(reversedValues.reversed_at, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('admin sets a club payment date and the configured five-day deadline', async () => {
+  let updatedPeriod;
+
+  clientFactory = (_url, _key, options) => {
+    assert.equal(options.global.headers.Authorization, 'Bearer access');
+    return {
+      auth: {
+        getUser: async () => ({
+          data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+          error: null
+        })
+      },
+      from(table) {
+        if (table === 'seasons') {
+          return {
+            select: () => ({
+              order: () => resolved([{
+                id: 2, start_date: '2026-08-01', end_date: '2027-06-30', active: true
+              }])
+            })
+          };
+        }
+        assert.equal(table, 'monthly_periods');
+        return {
+          upsert: () => ({
+            select: () => ({ single: () => resolved({ id: 9 }) })
+          }),
+          update(values) {
+            updatedPeriod = values;
+            return { eq: () => resolved(null) };
+          }
+        };
+      }
+    };
+  };
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: {
+      action: 'configure_period',
+      period_month: '2026-09',
+      club_payment_date: '2026-10-14'
+    }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(updatedPeriod, {
+    club_payment_date: '2026-10-14',
+    payment_deadline: '2026-10-19'
+  });
+  assert.equal(response.body.monthly_period.payment_deadline, '2026-10-19');
 });

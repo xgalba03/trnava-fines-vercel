@@ -1,5 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { createSupabaseClient, requireAdmin } = require('./_lib/supabase');
+const { localDateString } = require('./_lib/dates');
+const appSettings = require('../seed/settings.json').settings;
 
 const ACCOUNT_TIME_ZONE = 'Europe/Bratislava';
 const periodFormatter = new Intl.DateTimeFormat('en', {
@@ -36,6 +38,44 @@ function parsePeriod(value) {
   const period = String(value || currentPeriod()).trim();
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) return null;
   return period;
+}
+
+function parseDate(value) {
+  const date = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return null;
+  return date;
+}
+
+function addDays(date, numberOfDays) {
+  const result = new Date(`${date}T12:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + numberOfDays);
+  return result.toISOString().slice(0, 10);
+}
+
+function findSeason(seasons, period) {
+  const periodStart = `${period}-01`;
+  const monthEnd = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0))
+    .toISOString().slice(0, 10);
+  return (seasons || []).find((item) => (
+    item.start_date <= monthEnd && (!item.end_date || item.end_date >= periodStart)
+  )) || null;
+}
+
+function addSettlementStatuses(balances, monthlyPeriod, today = localDateString()) {
+  return balances.map((balance) => {
+    const hasActivity = balance.opening_balance !== 0 || balance.charges !== 0
+      || balance.adjustments !== 0 || balance.paid !== 0;
+    let settlementStatus = 'due';
+    if (!hasActivity) settlementStatus = 'no_balance';
+    else if (balance.balance < 0) settlementStatus = 'credit';
+    else if (balance.balance === 0) settlementStatus = 'settled';
+    else if (monthlyPeriod?.payment_deadline && today > monthlyPeriod.payment_deadline) {
+      settlementStatus = 'overdue';
+    }
+    return { ...balance, settlement_status: settlementStatus };
+  });
 }
 
 function buildBalances(players, fines, adjustments, payments, period) {
@@ -90,17 +130,13 @@ function buildBalances(players, fines, adjustments, payments, period) {
 
 async function findOrCreateMonthlyPeriod(supabase, period) {
   const periodStart = `${period}-01`;
-  const monthEnd = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0))
-    .toISOString().slice(0, 10);
   const { data: seasons, error: seasonsError } = await supabase
     .from('seasons')
     .select('id, start_date, end_date, active')
     .order('active', { ascending: false });
   if (seasonsError) throw seasonsError;
 
-  const season = (seasons || []).find((item) => (
-    item.start_date <= monthEnd && (!item.end_date || item.end_date >= periodStart)
-  ));
+  const season = findSeason(seasons, period);
   if (!season) return { seasonId: null, monthlyPeriodId: null };
 
   const { data: monthlyPeriod, error: monthlyPeriodError } = await supabase
@@ -115,27 +151,49 @@ async function findOrCreateMonthlyPeriod(supabase, period) {
 }
 
 async function loadSnapshot(supabase, period) {
-  const [playersResult, finesResult, adjustmentsResult, paymentsResult] = await Promise.all([
+  const periodDate = `${period}-01`;
+  const [
+    playersResult, finesResult, adjustmentsResult, paymentsResult,
+    seasonsResult, monthlyPeriodsResult
+  ] = await Promise.all([
     supabase.from('players').select('id, name, active').eq('active', true).order('name'),
     supabase.from('fines').select('player_id, amount, occurred_at'),
     supabase.from('financial_adjustments').select('player_id, amount, occurred_at'),
     supabase.from('payments')
       .select('id, player_id, period_month, amount, currency, paid_at, created_at, reversed_at, player:players(name)')
       .is('reversed_at', null)
-      .order('paid_at', { ascending: false })
+      .order('paid_at', { ascending: false }),
+    supabase.from('seasons').select('id, start_date, end_date, active').order('active', { ascending: false }),
+    supabase.from('monthly_periods')
+      .select('id, season_id, period_month, club_payment_date, payment_deadline')
+      .eq('period_month', periodDate)
   ]);
-  const error = playersResult.error || finesResult.error || adjustmentsResult.error || paymentsResult.error;
+  const error = playersResult.error || finesResult.error || adjustmentsResult.error
+    || paymentsResult.error || seasonsResult.error || monthlyPeriodsResult.error;
   if (error) throw error;
+
+  const season = findSeason(seasonsResult.data, period);
+  const storedPeriod = (monthlyPeriodsResult.data || []).find((item) => item.season_id === season?.id) || null;
+  const monthlyPeriod = {
+    id: storedPeriod?.id || null,
+    season_id: season?.id || null,
+    period_month: periodDate,
+    club_payment_date: storedPeriod?.club_payment_date || null,
+    payment_deadline: storedPeriod?.payment_deadline || null,
+    days_after_club_payment: Number(appSettings.daysAfterClubPaymentBeforeDeadline)
+  };
+  const balances = buildBalances(
+    playersResult.data,
+    finesResult.data,
+    adjustmentsResult.data,
+    paymentsResult.data,
+    period
+  );
 
   return {
     period,
-    balances: buildBalances(
-      playersResult.data,
-      finesResult.data,
-      adjustmentsResult.data,
-      paymentsResult.data,
-      period
-    ),
+    monthly_period: monthlyPeriod,
+    balances: addSettlementStatuses(balances, monthlyPeriod),
     payments: (paymentsResult.data || []).filter((payment) => (
       String(payment.period_month || '').slice(0, 7) === period
     ))
@@ -159,6 +217,43 @@ module.exports = async function handler(request, response) {
     const auth = await requireAdmin(request);
     if (auth.error) return response.status(auth.status).json({ error: auth.error });
     const body = request.body || {};
+
+    if (body.action === 'configure_period') {
+      const period = parsePeriod(body.period_month);
+      const clubPaymentDate = parseDate(body.club_payment_date);
+      const deadlineDays = Number(appSettings.daysAfterClubPaymentBeforeDeadline);
+      if (!period || !clubPaymentDate) {
+        return response.status(400).json({ error: 'Choose a valid month and club payment date.' });
+      }
+      if (!Number.isSafeInteger(deadlineDays) || deadlineDays < 0 || deadlineDays > 365) {
+        throw new Error('The configured payment deadline is invalid.');
+      }
+
+      const links = await findOrCreateMonthlyPeriod(auth.supabase, period);
+      if (!links.monthlyPeriodId) {
+        return response.status(400).json({ error: 'No matching season is available for this month.' });
+      }
+      const paymentDeadline = addDays(clubPaymentDate, deadlineDays);
+      const { error: updateError } = await auth.supabase
+        .from('monthly_periods')
+        .update({
+          club_payment_date: clubPaymentDate,
+          payment_deadline: paymentDeadline
+        })
+        .eq('id', links.monthlyPeriodId);
+      if (updateError) throw updateError;
+      return response.status(200).json({
+        message: `Deadline set to ${paymentDeadline}.`,
+        monthly_period: {
+          id: links.monthlyPeriodId,
+          season_id: links.seasonId,
+          period_month: `${period}-01`,
+          club_payment_date: clubPaymentDate,
+          payment_deadline: paymentDeadline,
+          days_after_club_payment: deadlineDays
+        }
+      });
+    }
 
     if (body.action === 'reverse') {
       const paymentId = Number(body.payment_id);
@@ -250,3 +345,4 @@ module.exports = async function handler(request, response) {
 
 module.exports.buildBalances = buildBalances;
 module.exports.occurrencePeriod = occurrencePeriod;
+module.exports.addSettlementStatuses = addSettlementStatuses;

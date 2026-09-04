@@ -154,6 +154,13 @@ player's monthly account rather than to individual fines, so one cash or bank
 transfer can settle the whole amount. An overpayment appears as account credit.
 Unpaid balances and credits are carried into the following month automatically.
 
+For each settlement month, the administrator can enter the actual date on which
+the club payment arrived. The player deadline is calculated using
+`daysAfterClubPaymentBeforeDeadline` from `seed/settings.json` (currently five
+calendar days). The public balance list then shows each player as payment due,
+settled, overdue, account credit, or no balance. This status is calculated from
+the ledger and deadline; it is not a manually maintained checkbox.
+
 Log in and use **Admin -> Record a payment**, or select **Record** next to a
 player's monthly balance. Payment method and the private administrator note are
 not returned to public visitors. If a payment was entered incorrectly, reverse
