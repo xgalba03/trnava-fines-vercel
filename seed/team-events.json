@@ -24,7 +24,7 @@
     "cancellations": []
     },
     {
-    "code": "Tuesday-full-team-practice",
+    "code": "tuesday-full-team-practice",
     "name": "Utorok celá partia",
     "weekday": "tuesday",
     "startsOn": "2026-09-01",
@@ -32,7 +32,7 @@
     "startTime": "18:00",
     "durationMinutes": 120,
     "timeZone": "Europe/Bratislava",
-    "attendanceScope": "partial_team",
+    "attendanceScope": "full_team",
     "playerNames": [],
     "location": "MŠH Trnava",
     "notes": "",
@@ -40,7 +40,7 @@
     "cancellations": []
     },
     {
-    "code": "Wednesday-full-team-practice",
+    "code": "wednesday-full-team-practice",
     "name": "Streda celá partia",
     "weekday": "wednesday",
     "startsOn": "2026-09-01",
@@ -48,7 +48,7 @@
     "startTime": "20:30",
     "durationMinutes": 120,
     "timeZone": "Europe/Bratislava",
-    "attendanceScope": "partial_team",
+    "attendanceScope": "full_team",
     "playerNames": [],
     "location": "MŠH Trnava",
     "notes": "",
@@ -56,7 +56,7 @@
     "cancellations": []
     },
         {
-    "code": "Thursday-full-team-practice",
+    "code": "thursday-full-team-practice",
     "name": "Štvrtok celá partia",
     "weekday": "thursday",
     "startsOn": "2026-09-01",
@@ -64,7 +64,7 @@
     "startTime": "20:00",
     "durationMinutes": 180,
     "timeZone": "Europe/Bratislava",
-    "attendanceScope": "partial_team",
+    "attendanceScope": "full_team",
     "playerNames": [],
     "location": "Mladosť Bratislava",
     "notes": "",
@@ -72,7 +72,7 @@
     "cancellations": []
     },
     {
-    "code": "Friday-full-team-practice",
+    "code": "friday-full-team-practice",
     "name": "Piatok celá partia",
     "weekday": "friday",
     "startsOn": "2026-09-01",
@@ -80,7 +80,7 @@
     "startTime": "20:30",
     "durationMinutes": 120,
     "timeZone": "Europe/Bratislava",
-    "attendanceScope": "partial_team",
+    "attendanceScope": "full_team",
     "playerNames": [],
     "location": "MŠH Trnava",
     "notes": "",
