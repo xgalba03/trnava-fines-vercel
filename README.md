@@ -35,11 +35,13 @@ logging in with email and password.
 11. Run [`database/010-public-accepted-objection-fines.sql`](database/010-public-accepted-objection-fines.sql)
    so accepted-objection fines remain visible in public history while other
    voided records stay private and all voided records stay out of balances.
-12. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+12. If you previously ran migration `010` without its `voided_at` permission,
+   run [`database/011-public-voided-at-permission.sql`](database/011-public-voided-at-permission.sql).
+13. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-13. Import this repository into Vercel.
-14. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+14. Import this repository into Vercel.
+15. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -121,6 +123,16 @@ Other voided fines remain admin-only.
 Fines linked to an objection and system-created fines cannot be edited directly;
 void and replace them when a correction is needed.
 The public fine list can be filtered locally by player, month, and fine type.
+
+## Dashboard and analytics
+
+The public season dashboard calculates its figures from active fine events,
+signed financial adjustments, and non-reversed payments. It shows the collected
+team pot, net amount assessed, outstanding positive balances, collection rate,
+player leaderboard, common normal offences, and monthly normal-versus-late fine
+activity. Use the season selector to inspect historical seasons. Objection filing
+fees remain in financial totals but are excluded from normal-offence rankings.
+Voided fines and reversed payments are excluded.
 
 After editing seed JSON and deploying it, log in and select **Sync seed files**.
 The sync updates matching catalogue/calendar records by their stable codes; it

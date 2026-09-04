@@ -362,6 +362,97 @@
         color: var(--success);
       }
 
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin: 0.85rem 0 1.1rem;
+      }
+
+      .metric-card {
+        display: grid;
+        gap: 0.2rem;
+        min-width: 0;
+        padding: 0.8rem;
+        background: var(--pill-bg);
+        border-radius: 0.65rem;
+      }
+
+      .metric-value {
+        font-size: clamp(1.25rem, 6vw, 1.8rem);
+        line-height: 1.1;
+      }
+
+      .analytics-details {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .analytics-list {
+        max-height: 18rem;
+      }
+
+      .rank-number {
+        display: inline-grid;
+        width: 1.75rem;
+        height: 1.75rem;
+        margin-right: 0.55rem;
+        place-items: center;
+        background: var(--pill-bg);
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .bar-list {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+      }
+
+      .bar-heading,
+      .chart-legend {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .bar-track {
+        display: flex;
+        height: 0.65rem;
+        margin-top: 0.3rem;
+        overflow: hidden;
+        background: var(--pill-bg);
+        border-radius: 999px;
+      }
+
+      .bar-normal {
+        background: #3b82f6;
+      }
+
+      .bar-late {
+        background: #f59e0b;
+      }
+
+      .legend-key::before {
+        display: inline-block;
+        width: 0.55rem;
+        height: 0.55rem;
+        margin-right: 0.3rem;
+        border-radius: 999px;
+        content: '';
+      }
+
+      .legend-normal::before {
+        background: #3b82f6;
+      }
+
+      .legend-late::before {
+        background: #f59e0b;
+      }
+
       .balance-value.due {
         color: var(--danger);
       }
@@ -494,6 +585,14 @@
 
         .fine-filters {
           grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .metric-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .analytics-details {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
 
@@ -774,6 +873,41 @@
           <p id="status" role="status"></p>
           <ul id="fines" class="scroll-list fines-list" data-empty="No fines recorded yet."></ul>
         </section>
+        <section id="analytics-section" class="panel">
+          <div class="section-heading">
+            <div>
+              <h2>Season dashboard</h2>
+              <span class="section-subtitle">Team pot and fine statistics</span>
+            </div>
+            <label class="month-control">
+              <span>Season</span>
+              <select id="analytics-season" aria-label="Analytics season"></select>
+            </label>
+          </div>
+          <p id="analytics-status" role="status"></p>
+          <div class="metric-grid">
+            <div class="metric-card"><span class="meta">Team pot collected</span><strong id="metric-pot" class="metric-value">€0.00</strong></div>
+            <div class="metric-card"><span class="meta">Net amount assessed</span><strong id="metric-assessed" class="metric-value">€0.00</strong><span id="metric-breakdown" class="meta"></span></div>
+            <div class="metric-card"><span class="meta">Outstanding</span><strong id="metric-outstanding" class="metric-value">€0.00</strong></div>
+            <div class="metric-card"><span class="meta">Collected</span><strong id="metric-rate" class="metric-value">0%</strong></div>
+          </div>
+          <div class="analytics-details">
+            <div>
+              <h3>Player leaderboard</h3>
+              <ul id="analytics-leaderboard" class="scroll-list analytics-list" data-empty="No fines in this season."></ul>
+            </div>
+            <div>
+              <h3>Most common offences</h3>
+              <ul id="analytics-offences" class="scroll-list analytics-list" data-empty="No normal offences in this season."></ul>
+            </div>
+          </div>
+          <h3>Monthly fine activity</h3>
+          <div class="chart-legend">
+            <span class="legend-key legend-normal">Normal</span>
+            <span class="legend-key legend-late">Late payment</span>
+          </div>
+          <div id="analytics-months" class="bar-list"></div>
+        </section>
         <section id="account-section" class="panel">
           <div class="section-heading">
             <div>
@@ -849,6 +983,17 @@
       const fineFilterType = document.querySelector('#fine-filter-type');
       const fineFilterClear = document.querySelector('#fine-filter-clear');
       const fineFilterSummary = document.querySelector('#fine-filter-summary');
+      const analyticsSection = document.querySelector('#analytics-section');
+      const analyticsSeason = document.querySelector('#analytics-season');
+      const analyticsStatus = document.querySelector('#analytics-status');
+      const metricPot = document.querySelector('#metric-pot');
+      const metricAssessed = document.querySelector('#metric-assessed');
+      const metricBreakdown = document.querySelector('#metric-breakdown');
+      const metricOutstanding = document.querySelector('#metric-outstanding');
+      const metricRate = document.querySelector('#metric-rate');
+      const analyticsLeaderboard = document.querySelector('#analytics-leaderboard');
+      const analyticsOffences = document.querySelector('#analytics-offences');
+      const analyticsMonths = document.querySelector('#analytics-months');
       const paymentEntry = document.querySelector('#payment-entry');
       const paymentForm = document.querySelector('#payment-form');
       const paymentStatus = document.querySelector('#payment-status');
@@ -893,6 +1038,7 @@
 
       // Keep the public dashboard focused while retaining all admin forms.
       app.insertBefore(finesSection, eventSection);
+      app.insertBefore(analyticsSection, eventSection);
       app.insertBefore(accountSection, eventSection);
       loginDialogContent.append(auth);
       adminDialogContent.append(
@@ -1315,7 +1461,7 @@
               await runAdminAction('/api/fines', {
                 action: 'void', fine_id: fine.id, reason
               }, status);
-              await Promise.all([loadFines(), loadPayments(), loadObjections()]);
+              await Promise.all([loadFines(), loadPayments(), loadObjections(), loadAnalytics()]);
             }));
           }
           if (isAdmin && !fine.voided_at && fine.player_id && fine.type === 'normal' && !fine.objection_id) {
@@ -1325,7 +1471,7 @@
               await runAdminAction('/api/objections', {
                 action: 'submit', fine_id: fine.id, reason
               }, status);
-              await Promise.all([loadFines(), loadPayments(), loadObjections()]);
+              await Promise.all([loadFines(), loadPayments(), loadObjections(), loadAnalytics()]);
             }));
           }
           item.append(description, right);
@@ -1340,6 +1486,126 @@
         const data = await readJson(response);
         if (!response.ok) throw new Error(data.error || 'Unable to load fines.');
         render(data.fines || []);
+      }
+
+      function moneyLabel(value) {
+        const amount = Number(value) || 0;
+        return `${amount < 0 ? '−' : ''}€${Math.abs(amount).toFixed(2)}`;
+      }
+
+      function analyticsMonthLabel(value) {
+        return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' })
+          .format(new Date(`${value}-01T12:00:00`));
+      }
+
+      function renderAnalytics(analytics) {
+        const summary = analytics?.summary || {};
+        metricPot.textContent = moneyLabel(summary.team_pot);
+        metricAssessed.textContent = moneyLabel(summary.assessed);
+        metricBreakdown.textContent = `Normal ${moneyLabel(summary.normal_total)} · `
+          + `late ${moneyLabel(summary.late_total)} · adjustments ${moneyLabel(summary.adjustment_total)}`;
+        metricOutstanding.textContent = moneyLabel(summary.outstanding);
+        metricRate.textContent = `${Number(summary.collection_rate) || 0}%`;
+
+        analyticsLeaderboard.replaceChildren(...(analytics?.leaderboard || []).map((player) => {
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          const rank = document.createElement('span');
+          const name = document.createElement('strong');
+          const details = document.createElement('span');
+          const amount = document.createElement('strong');
+          copy.className = 'item-copy';
+          rank.className = 'rank-number';
+          details.className = 'meta';
+          amount.className = 'balance-value';
+          rank.textContent = player.rank;
+          name.textContent = player.player_name;
+          details.textContent = `${player.fine_count} fine${player.fine_count === 1 ? '' : 's'} · `
+            + `${player.normal_fine_count} normal · late ${moneyLabel(player.late_amount)}`;
+          amount.textContent = moneyLabel(player.total_amount);
+          const heading = document.createElement('span');
+          heading.append(rank, name);
+          copy.append(heading, details);
+          item.append(copy, amount);
+          return item;
+        }));
+
+        analyticsOffences.replaceChildren(...(analytics?.offences || []).slice(0, 10).map((offence) => {
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          const name = document.createElement('strong');
+          const details = document.createElement('span');
+          const amount = document.createElement('strong');
+          copy.className = 'item-copy';
+          details.className = 'meta';
+          name.textContent = offence.name;
+          details.textContent = `${offence.count} occurrence${offence.count === 1 ? '' : 's'} · ${offence.category}`;
+          amount.textContent = moneyLabel(offence.amount);
+          copy.append(name, details);
+          item.append(copy, amount);
+          return item;
+        }));
+
+        const months = analytics?.months || [];
+        const maximum = Math.max(0, ...months.map((month) => Number(month.total_amount) || 0));
+        if (!months.length) {
+          const empty = document.createElement('p');
+          empty.className = 'empty-state';
+          empty.textContent = 'No monthly fine activity in this season.';
+          analyticsMonths.replaceChildren(empty);
+          return;
+        }
+        analyticsMonths.replaceChildren(...months.map((month) => {
+          const row = document.createElement('div');
+          const heading = document.createElement('div');
+          const label = document.createElement('span');
+          const total = document.createElement('span');
+          const track = document.createElement('div');
+          const normal = document.createElement('span');
+          const late = document.createElement('span');
+          heading.className = 'bar-heading';
+          track.className = 'bar-track';
+          normal.className = 'bar-normal';
+          late.className = 'bar-late';
+          label.textContent = analyticsMonthLabel(month.month);
+          total.textContent = `${moneyLabel(month.total_amount)} · ${month.count} fine${month.count === 1 ? '' : 's'}`;
+          const divisor = maximum || 1;
+          normal.style.width = `${(Number(month.normal_amount) / divisor) * 100}%`;
+          late.style.width = `${(Number(month.late_amount) / divisor) * 100}%`;
+          track.setAttribute('role', 'img');
+          track.setAttribute('aria-label', `${label.textContent}: normal ${moneyLabel(month.normal_amount)}, late payment ${moneyLabel(month.late_amount)}`);
+          heading.append(label, total);
+          track.append(normal, late);
+          row.append(heading, track);
+          return row;
+        }));
+      }
+
+      async function loadAnalytics() {
+        analyticsStatus.textContent = 'Loading dashboard...';
+        try {
+          const query = analyticsSeason.value
+            ? `?season=${encodeURIComponent(analyticsSeason.value)}`
+            : '';
+          const response = await fetch(`/api/analytics${query}`);
+          const data = await readJson(response);
+          if (!response.ok) throw new Error(data.error || 'Unable to load analytics.');
+          const selectedId = data.selected_season ? String(data.selected_season.id) : '';
+          analyticsSeason.replaceChildren(
+            ...(data.seasons || []).map((season) => option(
+              season.id,
+              `${season.name}${season.active ? ' · current' : ''}`
+            ))
+          );
+          analyticsSeason.value = selectedId;
+          analyticsSeason.disabled = !data.seasons?.length;
+          renderAnalytics(data.analytics);
+          analyticsStatus.textContent = data.selected_season
+            ? `${data.analytics?.summary?.fine_count || 0} active fine events in ${data.selected_season.name}.`
+            : 'No season is configured.';
+        } catch (error) {
+          analyticsStatus.textContent = error.message;
+        }
       }
 
       function renderBalances(items) {
@@ -1451,7 +1717,7 @@
               await runAdminAction('/api/payments', {
                 action: 'reverse', payment_id: payment.id, reason
               }, accountStatus);
-              await loadPayments();
+              await Promise.all([loadPayments(), loadAnalytics()]);
             }));
           }
           item.append(copy, actions);
@@ -1731,7 +1997,7 @@
               actions.append(actionButton(decision === 'accepted' ? 'Accept' : 'Reject', async () => {
                 const note = window.prompt('Optional decision note:') || '';
                 await runAdminAction('/api/objections', { action: 'resolve', objection_id: objection.id, decision, note }, status);
-                await Promise.all([loadObjections(), loadFines(), loadPayments()]);
+                await Promise.all([loadObjections(), loadFines(), loadPayments(), loadAnalytics()]);
               }, decision !== 'accepted'));
             }
           }
@@ -1783,7 +2049,7 @@
           await runAdminAction('/api/payments', body, settlementStatus);
           balancePeriod.value = body.period_month;
           paymentForm.elements.period_month.value = body.period_month;
-          await loadPayments();
+          await Promise.all([loadPayments(), loadAnalytics()]);
         } catch (error) {
           settlementStatus.textContent = error.message;
         } finally {
@@ -1844,7 +2110,7 @@
           await runAdminAction('/api/payments', body, paymentStatus);
           paymentForm.reset();
           setCurrentPaymentValues();
-          await loadPayments();
+          await Promise.all([loadPayments(), loadAnalytics()]);
         } catch (error) {
           paymentStatus.textContent = error.message;
         } finally {
@@ -2021,6 +2287,7 @@
         fineFilterType.value = '';
         render();
       });
+      analyticsSeason.addEventListener('change', loadAnalytics);
       adminMenuButton.addEventListener('click', () => openAdminAt(adminDialogContent));
       closeLogin.addEventListener('click', () => loginDialog.close());
       closeAdmin.addEventListener('click', () => adminDialog.close());
@@ -2070,7 +2337,7 @@
             throw new Error(data.error || 'Unable to save the fine.');
           }
           resetFineForm();
-          await Promise.all([loadFines(), loadPayments()]);
+          await Promise.all([loadFines(), loadPayments(), loadAnalytics()]);
           status.textContent = data.message || 'Saved.';
         } catch (error) {
           status.textContent = error.message;
@@ -2105,7 +2372,7 @@
         setCurrentPaymentValues();
         obligationForm.elements.trigger_date.value = new Date().toISOString().slice(0, 10);
         await Promise.all([
-          loadPlayers(), loadFineTypes(), loadFines(), loadPayments(), loadEvents(),
+          loadPlayers(), loadFineTypes(), loadFines(), loadPayments(), loadAnalytics(), loadEvents(),
           loadObligations(), loadObjections()
         ]);
       }
