@@ -280,12 +280,12 @@ test('admin reverses a payment while preserving its record', async () => {
   await handler({
     method: 'POST',
     headers: { authorization: 'Bearer access' },
-    body: { action: 'reverse', payment_id: 30, reason: 'Entered twice' }
+    body: { action: 'reverse', payment_id: 30, reason: '' }
   }, response);
 
   assert.equal(response.statusCode, 200);
   assert.equal(reversedValues.reversed_by, 'admin-id');
-  assert.equal(reversedValues.reversal_reason, 'Entered twice');
+  assert.equal(reversedValues.reversal_reason, 'No reason provided.');
   assert.match(reversedValues.reversed_at, /^\d{4}-\d{2}-\d{2}T/);
 });
 

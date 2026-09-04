@@ -151,12 +151,12 @@ module.exports = async function handler(request, response) {
       values = { status: 'fulfilled', fulfilled_at: new Date().toISOString(), fulfilled_note: note, updated_by: user.id };
       eventType = 'fulfilled';
     } else if (action === 'cancel') {
-      if (!note) return response.status(400).json({ error: 'A cancellation reason is required.' });
-      values = { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: user.id, cancellation_reason: note, updated_by: user.id };
+      const cancellationReason = note || 'No reason provided.';
+      values = { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: user.id, cancellation_reason: cancellationReason, updated_by: user.id };
       eventType = 'cancelled';
     } else if (action === 'waive') {
-      if (!note) return response.status(400).json({ error: 'A waiver reason is required.' });
-      values = { status: 'waived', waived_at: new Date().toISOString(), waived_by: user.id, waiver_reason: note, updated_by: user.id };
+      const waiverReason = note || 'No reason provided.';
+      values = { status: 'waived', waived_at: new Date().toISOString(), waived_by: user.id, waiver_reason: waiverReason, updated_by: user.id };
       eventType = 'waived';
     } else if (action === 'reopen') {
       values = {
@@ -191,7 +191,7 @@ module.exports = async function handler(request, response) {
       to_event_id: values.scheduled_event_id ?? current.scheduled_event_id,
       old_due_at: current.due_at,
       new_due_at: values.due_at ?? current.due_at,
-      note,
+      note: note || values.cancellation_reason || values.waiver_reason || null,
       created_by: user.id
     });
     return response.status(200).json(await obligationPayload(supabase));

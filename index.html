@@ -1310,8 +1310,8 @@
           }
           if (isAdmin && !fine.voided_at && !fine.objection_id) {
             right.append(actionButton('Void', async () => {
-              const reason = window.prompt('Why is this fine being voided? The record will be kept for audit.');
-              if (!reason?.trim()) return;
+              const reason = window.prompt('Optional reason for voiding this fine:');
+              if (reason === null) return;
               await runAdminAction('/api/fines', {
                 action: 'void', fine_id: fine.id, reason
               }, status);
@@ -1320,8 +1320,8 @@
           }
           if (isAdmin && !fine.voided_at && fine.player_id && fine.type === 'normal' && !fine.objection_id) {
             right.append(actionButton('Object', async () => {
-              const reason = window.prompt('Reason for the objection (€1 filing fee):');
-              if (!reason?.trim()) return;
+              const reason = window.prompt('Optional reason for the objection (€1 filing fee):');
+              if (reason === null) return;
               await runAdminAction('/api/objections', {
                 action: 'submit', fine_id: fine.id, reason
               }, status);
@@ -1446,8 +1446,8 @@
           actions.className = 'actions';
           if (isAdmin) {
             actions.append(actionButton('Reverse', async () => {
-              const reason = window.prompt('Reason for reversing this payment:');
-              if (!reason?.trim()) return;
+              const reason = window.prompt('Optional reason for reversing this payment:');
+              if (reason === null) return;
               await runAdminAction('/api/payments', {
                 action: 'reverse', payment_id: payment.id, reason
               }, accountStatus);
@@ -1674,14 +1674,14 @@
                 await loadObligations();
               }),
               actionButton('Waive', async () => {
-                const note = window.prompt('Reason for waiving this obligation:');
-                if (!note?.trim()) return;
+                const note = window.prompt('Optional reason for waiving this obligation:');
+                if (note === null) return;
                 await runAdminAction('/api/obligations', { action: 'waive', obligation_id: obligation.id, note }, obligationStatus);
                 await loadObligations();
               }),
               actionButton('Cancel', async () => {
-                const note = window.prompt('Reason for cancelling this obligation:');
-                if (!note?.trim()) return;
+                const note = window.prompt('Optional reason for cancelling this obligation:');
+                if (note === null) return;
                 await runAdminAction('/api/obligations', { action: 'cancel', obligation_id: obligation.id, note }, obligationStatus);
                 await loadObligations();
               })

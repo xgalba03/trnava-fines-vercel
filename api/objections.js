@@ -33,9 +33,9 @@ module.exports = async function handler(request, response) {
 
     if (action === 'submit') {
       const fineId = Number(body.fine_id);
-      const reason = String(body.reason || '').trim();
-      if (!Number.isSafeInteger(fineId) || fineId <= 0 || !reason) {
-        return response.status(400).json({ error: 'Fine and objection reason are required.' });
+      const reason = String(body.reason || '').trim() || 'No reason provided.';
+      if (!Number.isSafeInteger(fineId) || fineId <= 0) {
+        return response.status(400).json({ error: 'Choose a fine for the objection.' });
       }
       const { data: existing, error: existingError } = await supabase
         .from('objections')

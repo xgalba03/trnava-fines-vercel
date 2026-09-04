@@ -380,9 +380,9 @@ module.exports = async function handler(request, response) {
 
     if (body.action === 'reverse') {
       const paymentId = Number(body.payment_id);
-      const reason = String(body.reason || '').trim();
-      if (!Number.isSafeInteger(paymentId) || paymentId <= 0 || !reason) {
-        return response.status(400).json({ error: 'Choose a payment and enter a reversal reason.' });
+      const reason = String(body.reason || '').trim() || 'No reason provided.';
+      if (!Number.isSafeInteger(paymentId) || paymentId <= 0) {
+        return response.status(400).json({ error: 'Choose a payment to reverse.' });
       }
       if (reason.length > 500) {
         return response.status(400).json({ error: 'The reversal reason cannot exceed 500 characters.' });

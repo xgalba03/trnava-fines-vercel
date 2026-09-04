@@ -102,9 +102,9 @@ module.exports = async function handler(request, response) {
     const fineId = Number(fineIdValue);
 
     if (action === 'void') {
-      const reason = String(request.body?.reason || '').trim();
-      if (!Number.isSafeInteger(fineId) || fineId <= 0 || !reason) {
-        return response.status(400).json({ error: 'Choose a fine and enter a reason for voiding it.' });
+      const reason = String(request.body?.reason || '').trim() || 'No reason provided.';
+      if (!Number.isSafeInteger(fineId) || fineId <= 0) {
+        return response.status(400).json({ error: 'Choose a fine to void.' });
       }
       if (reason.length > 500) {
         return response.status(400).json({ error: 'The void reason cannot exceed 500 characters.' });

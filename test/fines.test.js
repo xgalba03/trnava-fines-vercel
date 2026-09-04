@@ -471,13 +471,13 @@ test('voiding a fine keeps it and records who voided it and why', async () => {
   await handler({
     method: 'POST',
     headers: { authorization: 'Bearer access' },
-    body: { action: 'void', fine_id: '12', reason: 'Entered for the wrong player' }
+    body: { action: 'void', fine_id: '12', reason: '' }
   }, response);
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.message, 'Fine voided. The original record was kept.');
   assert.equal(voidUpdate.voided_by, 'admin-id');
   assert.equal(voidUpdate.updated_by, 'admin-id');
-  assert.equal(voidUpdate.void_reason, 'Entered for the wrong player');
+  assert.equal(voidUpdate.void_reason, 'No reason provided.');
   assert.match(voidUpdate.voided_at, /^\d{4}-\d{2}-\d{2}T/);
 });

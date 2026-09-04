@@ -101,3 +101,43 @@ test('retrying an existing objection does not call the creation RPC again', asyn
   assert.equal(rpcCalls, 0);
   assert.deepEqual(response.body, { objections: [existing] });
 });
+
+test('an objection can be submitted without typing a reason', async () => {
+  let rpcArguments;
+  clientFactory = () => ({
+    auth: {
+      getUser: async () => ({
+        data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+        error: null
+      })
+    },
+    rpc(_name, argumentsValue) {
+      rpcArguments = argumentsValue;
+      return Promise.resolve({ error: null });
+    },
+    from(table) {
+      assert.equal(table, 'objections');
+      return {
+        select(columns) {
+          if (columns === 'id, status') {
+            return {
+              eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) })
+            };
+          }
+          return { order: async () => ({ data: [], error: null }) };
+        }
+      };
+    }
+  });
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: { action: 'submit', fine_id: 4, reason: '' }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(rpcArguments.requested_fine_id, 4);
+  assert.equal(rpcArguments.objection_reason, 'No reason provided.');
+});
