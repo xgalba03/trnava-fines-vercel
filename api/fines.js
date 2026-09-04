@@ -15,7 +15,7 @@ module.exports = async function handler(request, response) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (request.method === 'GET') {
-      const supabase = getClient(serviceKey);
+      const supabase = getClient(process.env.SUPABASE_ANON_KEY);
       const { data: fines, error } = await supabase
         .from('fines')
         .select('id, description, amount, created_at')
