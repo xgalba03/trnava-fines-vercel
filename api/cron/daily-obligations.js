@@ -1,5 +1,7 @@
 const { createServiceClient } = require('../_lib/supabase');
 const { dateRangeAfter, localDateString } = require('../_lib/dates');
+const { processLatePayments } = require('../_lib/late-payments');
+const settings = require('../../seed/settings.json').settings;
 
 function related(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -104,9 +106,15 @@ module.exports = async function handler(request, response) {
       if (dueError) throw dueError;
     }
 
-    return response.status(200).json({ date: today, generated: rows.length });
+    const latePayments = await processLatePayments(supabase, today, settings);
+    return response.status(200).json({
+      date: today,
+      generated: rows.length + latePayments.generated,
+      obligationPenalties: rows.length,
+      latePaymentPenalties: latePayments.generated
+    });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Daily obligation processing failed.' });
+    return response.status(500).json({ error: error.message || 'Daily fine processing failed.' });
   }
 };

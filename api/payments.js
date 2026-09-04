@@ -34,6 +34,15 @@ function occurrencePeriod(value) {
   return `${parts.year}-${parts.month}`;
 }
 
+function transactionPeriod(item) {
+  const relatedPeriod = Array.isArray(item.monthly_period)
+    ? item.monthly_period[0]
+    : item.monthly_period;
+  return relatedPeriod?.period_month
+    ? String(relatedPeriod.period_month).slice(0, 7)
+    : occurrencePeriod(item.occurred_at);
+}
+
 function parsePeriod(value) {
   const period = String(value || currentPeriod()).trim();
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) return null;
@@ -90,7 +99,7 @@ function buildBalances(players, fines, adjustments, payments, period) {
   }]));
 
   for (const fine of fines || []) {
-    const finePeriod = occurrencePeriod(fine.occurred_at);
+    const finePeriod = transactionPeriod(fine);
     if (!finePeriod || finePeriod > period) continue;
     const row = totals.get(String(fine.player_id));
     if (!row) continue;
@@ -98,7 +107,7 @@ function buildBalances(players, fines, adjustments, payments, period) {
     else row.charges = roundMoney(row.charges + Number(fine.amount));
   }
   for (const adjustment of adjustments || []) {
-    const adjustmentPeriod = occurrencePeriod(adjustment.occurred_at);
+    const adjustmentPeriod = transactionPeriod(adjustment);
     if (!adjustmentPeriod || adjustmentPeriod > period) continue;
     const row = totals.get(String(adjustment.player_id));
     if (!row) continue;
@@ -157,8 +166,10 @@ async function loadSnapshot(supabase, period) {
     seasonsResult, monthlyPeriodsResult
   ] = await Promise.all([
     supabase.from('players').select('id, name, active').eq('active', true).order('name'),
-    supabase.from('fines').select('player_id, amount, occurred_at'),
-    supabase.from('financial_adjustments').select('player_id, amount, occurred_at'),
+    supabase.from('fines')
+      .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)'),
+    supabase.from('financial_adjustments')
+      .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)'),
     supabase.from('payments')
       .select('id, player_id, period_month, amount, currency, paid_at, created_at, reversed_at, player:players(name)')
       .is('reversed_at', null)

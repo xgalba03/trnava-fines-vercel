@@ -28,11 +28,13 @@ logging in with email and password.
 8. Run [`database/007-player-payment-ledger.sql`](database/007-player-payment-ledger.sql)
    to add monthly player payments, calculated balances, and reversible payment
    records. This migration does not change or mark individual fines.
-9. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+9. Run [`database/008-automatic-late-payment-fines.sql`](database/008-automatic-late-payment-fines.sql)
+   to add the system-managed fine type used by the daily overdue-payment job.
+10. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-10. Import this repository into Vercel.
-11. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+11. Import this repository into Vercel.
+12. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -42,8 +44,8 @@ logging in with email and password.
    - `ADMIN_EMAIL`: the same email embedded in the database policies.
    - `SITE_URL`: the production HTTPS Vercel URL, without a trailing path.
    - `CRON_SECRET`: a long random server-only secret used by Vercel when it runs
-     the daily obligation penalty job.
-12. Redeploy after changing environment variables.
+     the daily obligation and overdue-payment fine job.
+13. Redeploy after changing environment variables.
 
 In **Supabase -> Authentication -> URL Configuration**, set the Site URL and an
 allowed redirect URL to the deployed site. This ensures the one-time password
@@ -166,3 +168,18 @@ player's monthly balance. Payment method and the private administrator note are
 not returned to public visitors. If a payment was entered incorrectly, reverse
 it from the payment list; the original record remains in Supabase for the audit
 trail and no longer reduces the player's balance.
+
+The existing daily Vercel job also checks configured monthly payment deadlines.
+For each player whose full balance for that settlement month remains unpaid, it
+creates the configured daily late-payment fine for every overdue calendar day.
+Stable idempotency keys prevent duplicate fines when the job is retried or
+backfills a missed day. Recording enough payment to cover that month's fines,
+credits, and previous late fees stops future penalties. Automatic late-payment
+fines remain linked to the original settlement month even when they occur in the
+following calendar month.
+
+## Color theme
+
+The app follows the device's light or dark appearance by default. The moon/sun
+button in the sticky header switches themes manually and saves that choice in
+the browser.

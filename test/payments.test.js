@@ -79,6 +79,13 @@ test('monthly balances combine fines, credits, and player-level payments', async
         if (table === 'fines') {
           return { select: () => resolved([
             { player_id: 7, amount: 10, occurred_at: '2026-09-10T10:00:00Z' },
+            {
+              player_id: 7,
+              amount: 1,
+              occurred_at: '2026-10-20T12:00:00Z',
+              monthly_period_id: 9,
+              monthly_period: { period_month: '2026-09-01' }
+            },
             { player_id: 7, amount: 50, occurred_at: '2026-08-10T10:00:00Z' }
           ]) };
         }
@@ -135,10 +142,10 @@ test('monthly balances combine fines, credits, and player-level payments', async
     player_id: 7,
     player_name: 'Alex',
     opening_balance: -2,
-    charges: 10,
+    charges: 11,
     adjustments: -2,
     paid: 4,
-    balance: 2,
+    balance: 3,
     settlement_status: 'overdue'
   }]);
   assert.deepEqual(response.body.payments, [activePayments[0]]);

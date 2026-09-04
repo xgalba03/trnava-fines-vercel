@@ -4,12 +4,87 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Trnava Fines MVP</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('trnava_theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch {}
+    </script>
     <style>
       :root {
         color-scheme: light;
         font-family: system-ui, sans-serif;
-        background: #f4f6f8;
-        color: #17202a;
+        --page-bg: #f4f6f8;
+        --surface: #ffffff;
+        --text: #17202a;
+        --muted: #52606d;
+        --subtle: #687785;
+        --border: #dfe5eb;
+        --strong-border: #c8d4df;
+        --input-border: #b8c2cc;
+        --button-bg: #17202a;
+        --button-text: #ffffff;
+        --row-border: #e6eaee;
+        --shadow: rgb(23 32 42 / 5%);
+        --dialog-shadow: rgb(23 32 42 / 25%);
+        --backdrop: rgb(23 32 42 / 55%);
+        --success: #137333;
+        --success-bg: #e6f4ea;
+        --danger: #a52714;
+        --danger-bg: #fce8e6;
+        --pill-bg: #edf1f4;
+        background: var(--page-bg);
+        color: var(--text);
+      }
+
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --page-bg: #111820;
+        --surface: #1a242e;
+        --text: #edf3f8;
+        --muted: #b5c0ca;
+        --subtle: #91a0ad;
+        --border: #34424f;
+        --strong-border: #465767;
+        --input-border: #5a6a79;
+        --button-bg: #e5edf4;
+        --button-text: #111820;
+        --row-border: #2d3a46;
+        --shadow: rgb(0 0 0 / 22%);
+        --dialog-shadow: rgb(0 0 0 / 55%);
+        --backdrop: rgb(0 0 0 / 68%);
+        --success: #81c995;
+        --success-bg: #173b27;
+        --danger: #f28b82;
+        --danger-bg: #4a211d;
+        --pill-bg: #293641;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+          color-scheme: dark;
+          --page-bg: #111820;
+          --surface: #1a242e;
+          --text: #edf3f8;
+          --muted: #b5c0ca;
+          --subtle: #91a0ad;
+          --border: #34424f;
+          --strong-border: #465767;
+          --input-border: #5a6a79;
+          --button-bg: #e5edf4;
+          --button-text: #111820;
+          --row-border: #2d3a46;
+          --shadow: rgb(0 0 0 / 22%);
+          --dialog-shadow: rgb(0 0 0 / 55%);
+          --backdrop: rgb(0 0 0 / 68%);
+          --success: #81c995;
+          --success-bg: #173b27;
+          --danger: #f28b82;
+          --danger-bg: #4a211d;
+          --pill-bg: #293641;
+        }
       }
 
       body {
@@ -63,11 +138,12 @@
         top: 0;
         z-index: 10;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
         padding: 0.75rem 0.25rem;
-        background: rgb(244 246 248 / 94%);
+        background: var(--page-bg);
         backdrop-filter: blur(8px);
       }
 
@@ -95,13 +171,13 @@
 
       .header-subtitle,
       .section-subtitle {
-        color: #687785;
+        color: var(--subtle);
         font-size: 0.75rem;
       }
 
       p {
         margin: 0.5rem 0 1rem;
-        color: #52606d;
+        color: var(--muted);
       }
 
       form {
@@ -113,14 +189,14 @@
       .panel {
         min-width: 0;
         padding: 1rem;
-        background: #ffffff;
-        border: 1px solid #dfe5eb;
+        background: var(--surface);
+        border: 1px solid var(--border);
         border-radius: 0.75rem;
-        box-shadow: 0 4px 14px rgb(23 32 42 / 5%);
+        box-shadow: 0 4px 14px var(--shadow);
       }
 
       .primary-panel {
-        border-color: #c8d4df;
+        border-color: var(--strong-border);
       }
 
       .section-heading,
@@ -151,14 +227,14 @@
       }
 
       .meta {
-        color: #52606d;
+        color: var(--muted);
         font-size: 0.82rem;
       }
 
       .form-field {
         display: grid;
         gap: 0.25rem;
-        color: #52606d;
+        color: var(--muted);
         font-size: 0.875rem;
       }
 
@@ -183,7 +259,7 @@
         grid-column: 1 / -1;
         min-height: 1.25rem;
         margin: 0;
-        color: #17202a;
+        color: var(--text);
       }
 
       input,
@@ -192,21 +268,23 @@
         box-sizing: border-box;
         min-height: 2.75rem;
         padding: 0.5rem 0.75rem;
-        border: 1px solid #b8c2cc;
+        border: 1px solid var(--input-border);
+        background: var(--surface);
+        color: var(--text);
         border-radius: 4px;
         font: inherit;
       }
 
       button {
-        border-color: #17202a;
-        background: #17202a;
-        color: #ffffff;
+        border-color: var(--button-bg);
+        background: var(--button-bg);
+        color: var(--button-text);
         cursor: pointer;
       }
 
       button.secondary {
-        background: #ffffff;
-        color: #17202a;
+        background: var(--surface);
+        color: var(--text);
       }
 
       .icon-button {
@@ -244,7 +322,7 @@
       .scroll-list:empty::before {
         display: block;
         padding: 1rem 0;
-        color: #687785;
+        color: var(--subtle);
         content: attr(data-empty);
         font-size: 0.9rem;
       }
@@ -262,38 +340,38 @@
       }
 
       .balance-value.credit {
-        color: #137333;
+        color: var(--success);
       }
 
       .balance-value.due {
-        color: #a52714;
+        color: var(--danger);
       }
 
       .status-pill {
         width: fit-content;
         padding: 0.15rem 0.45rem;
         border-radius: 999px;
-        background: #edf1f4;
-        color: #52606d;
+        background: var(--pill-bg);
+        color: var(--muted);
         font-size: 0.72rem;
         font-weight: 650;
       }
 
       .status-pill.overdue {
-        background: #fce8e6;
-        color: #a52714;
+        background: var(--danger-bg);
+        color: var(--danger);
       }
 
       .status-pill.settled,
       .status-pill.credit {
-        background: #e6f4ea;
-        color: #137333;
+        background: var(--success-bg);
+        color: var(--success);
       }
 
       .month-control {
         display: grid;
         gap: 0.2rem;
-        color: #52606d;
+        color: var(--muted);
         font-size: 0.75rem;
       }
 
@@ -312,7 +390,7 @@
         align-items: flex-start;
         gap: 1rem;
         padding: 0.75rem 0;
-        border-top: 1px solid #e6eaee;
+        border-top: 1px solid var(--row-border);
       }
 
       li:first-child {
@@ -320,7 +398,7 @@
       }
 
       .empty-state {
-        color: #687785;
+        color: var(--subtle);
         font-size: 0.9rem;
       }
 
@@ -330,13 +408,15 @@
         box-sizing: border-box;
         padding: 0;
         overflow: hidden;
-        border: 1px solid #c8d4df;
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--strong-border);
         border-radius: 0.9rem;
-        box-shadow: 0 24px 60px rgb(23 32 42 / 25%);
+        box-shadow: 0 24px 60px var(--dialog-shadow);
       }
 
       dialog::backdrop {
-        background: rgb(23 32 42 / 55%);
+        background: var(--backdrop);
         backdrop-filter: blur(2px);
       }
 
@@ -345,8 +425,8 @@
         top: 0;
         z-index: 2;
         padding: 1rem;
-        background: #ffffff;
-        border-bottom: 1px solid #dfe5eb;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
       }
 
       #login-dialog-content,
@@ -360,7 +440,7 @@
 
       #admin-dialog-content > * {
         padding-bottom: 1.25rem;
-        border-bottom: 1px solid #dfe5eb;
+        border-bottom: 1px solid var(--border);
       }
 
       #admin-dialog-content > *:last-child {
@@ -369,8 +449,8 @@
 
       #admin-dialog #logout {
         width: 100%;
-        background: #ffffff;
-        color: #17202a;
+        background: var(--surface);
+        color: var(--text);
       }
 
       @media (min-width: 48rem) {
@@ -393,6 +473,20 @@
       }
 
       @media (max-width: 30rem) {
+        .header-actions {
+          margin-left: auto;
+        }
+
+        .header-actions button {
+          min-height: 2.2rem;
+          padding: 0.3rem 0.45rem;
+          font-size: 0.78rem;
+        }
+
+        #theme-toggle {
+          width: 2.2rem;
+        }
+
         li {
           gap: 0.6rem;
         }
@@ -412,6 +506,7 @@
             <span class="header-subtitle">Team fine bank</span>
           </div>
           <div class="header-actions">
+            <button id="theme-toggle" class="icon-button secondary" type="button" aria-label="Use dark mode" title="Toggle color theme">☾</button>
             <button id="login" type="button">Login</button>
             <button id="add-fine" type="button" hidden>+ Fine</button>
             <button id="admin-menu" class="secondary" type="button" hidden>Admin</button>
@@ -635,6 +730,7 @@
     </dialog>
     <script>
       const app = document.querySelector('#app');
+      const themeToggle = document.querySelector('#theme-toggle');
       const auth = document.querySelector('#auth');
       const authForm = document.querySelector('#auth-form');
       const authStatus = document.querySelector('#auth-status');
@@ -725,6 +821,30 @@
       let accessToken = localStorage.getItem('trnava_access_token');
       let refreshToken = localStorage.getItem('trnava_refresh_token');
       let expiresAt = localStorage.getItem('trnava_expires_at');
+
+      function currentTheme() {
+        return document.documentElement.dataset.theme
+          || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      }
+
+      function updateThemeButton() {
+        const dark = currentTheme() === 'dark';
+        themeToggle.textContent = dark ? '☀' : '☾';
+        themeToggle.setAttribute('aria-label', dark ? 'Use light mode' : 'Use dark mode');
+      }
+
+      themeToggle.addEventListener('click', () => {
+        const nextTheme = currentTheme() === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = nextTheme;
+        try {
+          localStorage.setItem('trnava_theme', nextTheme);
+        } catch {}
+        updateThemeButton();
+      });
+
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (!document.documentElement.dataset.theme) updateThemeButton();
+      });
 
       function updateAuthUi(loggedIn, showForm = false) {
         isAdmin = loggedIn;
@@ -1685,6 +1805,7 @@
       });
 
       async function initialize() {
+        updateThemeButton();
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const hashAccessToken = hashParams.get('access_token');
         const hashRefreshToken = hashParams.get('refresh_token');
