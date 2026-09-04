@@ -307,14 +307,14 @@
           <p id="admin-tools-status" role="status"></p>
         </section>
         <section class="panel">
-          <h2>Team events</h2>
+          <h2>Important team events</h2>
           <div id="event-admin" class="admin-only" hidden>
             <form id="event-form">
               <input name="event_id" type="hidden" />
               <label class="form-field"><span>Season</span><select name="season_id" required></select></label>
               <label class="form-field"><span>Stable code</span><input name="code" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></label>
               <label class="form-field"><span>Name</span><input name="name" required /></label>
-              <label class="form-field"><span>Type</span><select name="event_type"><option value="training">Training</option><option value="match">Match</option><option value="other">Other</option></select></label>
+              <label class="form-field"><span>Type</span><select name="event_type"><option value="practice">Practice</option><option value="match">Match</option><option value="team_dinner">Team dinner</option><option value="other">Other</option></select></label>
               <label class="form-field"><span>Starts</span><input name="starts_at" type="datetime-local" required /></label>
               <label class="form-field"><span>Ends (optional)</span><input name="ends_at" type="datetime-local" /></label>
               <label class="form-field"><span>Attendance</span><select name="attendance_scope"><option value="full_team">Full team</option><option value="partial_team">Part of team</option></select></label>
@@ -769,7 +769,9 @@
             .filter(Boolean);
           const detail = document.createElement('span');
           detail.className = 'meta';
-          detail.textContent = `${dateLabel(event.starts_at)} · ${event.attendance_scope === 'full_team' ? 'full team' : participantNames.join(', ')} · ${event.status}`;
+          const recurring = event.recurrence_code ? ' · weekly practice' : '';
+          const cancelled = event.cancellation_reason ? ` · ${event.cancellation_reason}` : '';
+          detail.textContent = `${dateLabel(event.starts_at)} · ${event.event_type.replace('_', ' ')} · ${event.attendance_scope === 'full_team' ? 'full team' : participantNames.join(', ')} · ${event.status}${recurring}${cancelled}`;
           copy.append(title, detail);
           const actions = document.createElement('div');
           actions.className = 'actions';
@@ -778,7 +780,10 @@
             if (event.status !== 'cancelled') {
               actions.append(actionButton('Cancel', async () => {
                 if (!window.confirm(`Cancel ${event.name}? Linked obligations will move to the next eligible full-team event.`)) return;
-                await runAdminAction('/api/events', { action: 'cancel', event_id: event.id }, eventStatus);
+                const cancellationReason = window.prompt('Optional cancellation reason:', 'Event cancelled') || '';
+                await runAdminAction('/api/events', {
+                  action: 'cancel', event_id: event.id, cancellation_reason: cancellationReason
+                }, eventStatus);
                 await Promise.all([loadEvents(), loadObligations()]);
               }));
             }
@@ -800,7 +805,9 @@
         );
         if (currentSeason) eventForm.elements.season_id.value = currentSeason;
         const currentEvent = obligationForm.elements.scheduled_event_id.value;
-        const eligible = (data.events || []).filter((event) => event.status === 'scheduled' && event.attendance_scope === 'full_team');
+        const eligible = (data.events || []).filter((event) => event.status === 'scheduled'
+          && event.attendance_scope === 'full_team'
+          && ['practice', 'match'].includes(event.event_type));
         obligationForm.elements.scheduled_event_id.replaceChildren(
           option('', eligible.length ? 'Select full-team event' : 'No scheduled full-team events'),
           ...eligible.map((event) => option(event.id, `${event.name} — ${dateLabel(event.starts_at)}`))
@@ -842,7 +849,9 @@
               }),
               actionButton('Move', async () => {
                 const choices = [...eventsById.values()]
-                  .filter((event) => event.status === 'scheduled' && event.attendance_scope === 'full_team')
+                  .filter((event) => event.status === 'scheduled'
+                    && event.attendance_scope === 'full_team'
+                    && ['practice', 'match'].includes(event.event_type))
                   .map((event) => `${event.id}: ${event.name} (${dateLabel(event.starts_at)})`).join('\n');
                 const eventId = window.prompt(`Enter the new full-team event ID:\n${choices}`);
                 if (!eventId) return;
@@ -985,7 +994,7 @@
         try {
           const data = await runAdminAction('/api/catalog-sync', {}, adminToolsStatus);
           const counts = data.counts || {};
-          adminToolsStatus.textContent = `Synced ${counts.players || 0} players, ${counts.fineTypes || 0} fine types, ${counts.events || 0} events, ${counts.birthdayObligations || 0} birthday obligations and ${counts.newArrivalObligations || 0} new-arrival obligations.`;
+          adminToolsStatus.textContent = `Synced ${counts.players || 0} players, ${counts.fineTypes || 0} fine types, ${counts.weeklyPractices || 0} weekly practice dates, ${counts.events || 0} total events, ${counts.birthdayObligations || 0} birthday obligations and ${counts.newArrivalObligations || 0} new-arrival obligations.`;
           await Promise.all([loadPlayers(), loadFineTypes(), loadEvents(), loadObligations()]);
         } catch (error) {
           adminToolsStatus.textContent = error.message;

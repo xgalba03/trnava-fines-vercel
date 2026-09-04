@@ -22,11 +22,14 @@ logging in with email and password.
    fees and account credits. Run the migrations in numeric order and only once.
 6. If migration `004` was applied before the retry fix, run
    [`database/005-idempotent-objections.sql`](database/005-idempotent-objections.sql).
-7. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+7. Run [`database/006-recurring-important-team-events.sql`](database/006-recurring-important-team-events.sql)
+   to add weekly practice metadata, cancellation reasons, and explicit practice,
+   match, team-dinner and other event types.
+8. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-8. Import this repository into Vercel.
-9. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+9. Import this repository into Vercel.
+10. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -37,7 +40,7 @@ logging in with email and password.
    - `SITE_URL`: the production HTTPS Vercel URL, without a trailing path.
    - `CRON_SECRET`: a long random server-only secret used by Vercel when it runs
      the daily obligation penalty job.
-10. Redeploy after changing environment variables.
+11. Redeploy after changing environment variables.
 
 In **Supabase -> Authentication -> URL Configuration**, set the Site URL and an
 allowed redirect URL to the deployed site. This ensures the one-time password
@@ -80,6 +83,7 @@ Version-controlled starter lists live in [`seed/`](seed/README.md):
 - `settings.json` for the late-payment defaults from the design specification.
 - `birthdays.json` for birthday month/day values without unnecessary birth years.
 - `team-events.json` for the editable season calendar and full/partial attendance.
+- `team-events.example.json` as a copyable weekly-practice, match, and dinner template.
 - `obligation-types.json` for non-cash duties such as beer or birthday snacks.
 
 Check edits before committing them:
@@ -104,6 +108,12 @@ remain possible without changing JSON. A future sync deliberately reapplies the
 values in the files for matching records.
 
 ## Events, birthdays and obligations
+
+Weekly definitions in `team-events.json` expand into individual practice events,
+so one date can be cancelled or moved without changing the rest of the series.
+Generated events retain a recurrence code and their originally scheduled date
+for later statistics. One-off important events can be practices, matches, team
+dinners, or another custom event.
 
 Only an event marked `full_team` can carry an automatically scheduled birthday
 obligation. Partial-team practices store their explicit player list but are not

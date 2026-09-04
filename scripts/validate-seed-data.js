@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { WEEKDAYS, expandWeeklyPractices } = require('../api/_lib/weekly-events');
 
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -160,9 +161,12 @@ function validateTeamEvents(document) {
   if (!Array.isArray(document.events)) {
     throw new Error('seed/team-events.json: events must be an array.');
   }
+  if (!Array.isArray(document.weeklyPractices)) {
+    throw new Error('seed/team-events.json: weeklyPractices must be an array.');
+  }
   if (document.season === null) {
-    if (document.events.length) {
-      throw new Error('seed/team-events.json: season is required when events are present.');
+    if (document.events.length || document.weeklyPractices.length) {
+      throw new Error('seed/team-events.json: season is required when events or practices are present.');
     }
     return;
   }
@@ -181,8 +185,8 @@ function validateTeamEvents(document) {
       throw new Error(`${prefix}.code must use lowercase words separated by hyphens.`);
     }
     requireNonEmptyString(event.name, `${prefix}.name`);
-    if (!['training', 'match', 'other'].includes(event.type)) {
-      throw new Error(`${prefix}.type must be training, match or other.`);
+    if (!['practice', 'training', 'match', 'team_dinner', 'other'].includes(event.type)) {
+      throw new Error(`${prefix}.type must be practice, match, team_dinner or other.`);
     }
     if (!['full_team', 'partial_team'].includes(event.attendanceScope)) {
       throw new Error(`${prefix}.attendanceScope must be full_team or partial_team.`);
@@ -197,6 +201,13 @@ function validateTeamEvents(document) {
     }
     if (endsAt && endsAt <= startsAt) {
       throw new Error(`${prefix}.endsAt must be after startsAt.`);
+    }
+    const eventDate = String(event.startsAt).slice(0, 10);
+    if (eventDate < document.season.startDate || eventDate > document.season.endDate) {
+      throw new Error(`${prefix}.startsAt must fall inside the season.`);
+    }
+    if (event.status === 'cancelled') {
+      requireNonEmptyString(event.cancellationReason, `${prefix}.cancellationReason`);
     }
     if (!Array.isArray(event.playerNames)) {
       throw new Error(`${prefix}.playerNames must be an array.`);
@@ -213,7 +224,76 @@ function validateTeamEvents(document) {
     assertUnique(event.playerNames, `${prefix}.playerNames`);
   });
 
-  assertUnique(document.events.map((event) => event.code), 'Team event codes');
+  document.weeklyPractices.forEach((series, index) => {
+    const prefix = `seed/team-events.json: weeklyPractices[${index}]`;
+    requireNonEmptyString(series.code, `${prefix}.code`);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(series.code)) {
+      throw new Error(`${prefix}.code must use lowercase words separated by hyphens.`);
+    }
+    requireNonEmptyString(series.name, `${prefix}.name`);
+    if (!Object.hasOwn(WEEKDAYS, series.weekday)) {
+      throw new Error(`${prefix}.weekday must be a lowercase weekday name.`);
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(series.startsOn)
+      || !/^\d{4}-\d{2}-\d{2}$/.test(series.endsOn)
+      || series.endsOn < series.startsOn) {
+      throw new Error(`${prefix}.startsOn and .endsOn must be ordered ISO dates.`);
+    }
+    if (series.startsOn < document.season.startDate || series.endsOn > document.season.endDate) {
+      throw new Error(`${prefix} date range must fall inside the season.`);
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(series.startTime)) {
+      throw new Error(`${prefix}.startTime must use 24-hour HH:MM format.`);
+    }
+    if (!Number.isInteger(series.durationMinutes) || series.durationMinutes < 1 || series.durationMinutes > 1440) {
+      throw new Error(`${prefix}.durationMinutes must be an integer from 1 to 1440.`);
+    }
+    requireNonEmptyString(series.timeZone, `${prefix}.timeZone`);
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: series.timeZone }).format();
+    } catch {
+      throw new Error(`${prefix}.timeZone is not recognized.`);
+    }
+    requireBoolean(series.active, `${prefix}.active`);
+    if (!['full_team', 'partial_team'].includes(series.attendanceScope)) {
+      throw new Error(`${prefix}.attendanceScope must be full_team or partial_team.`);
+    }
+    if (!Array.isArray(series.playerNames)) {
+      throw new Error(`${prefix}.playerNames must be an array.`);
+    }
+    if (series.attendanceScope === 'full_team' && series.playerNames.length) {
+      throw new Error(`${prefix}.playerNames must be empty for a full-team practice.`);
+    }
+    if (series.attendanceScope === 'partial_team' && !series.playerNames.length) {
+      throw new Error(`${prefix}.playerNames must identify the partial group.`);
+    }
+    series.playerNames.forEach((name, playerIndex) => {
+      requireNonEmptyString(name, `${prefix}.playerNames[${playerIndex}]`);
+    });
+    assertUnique(series.playerNames, `${prefix}.playerNames`);
+    if (!Array.isArray(series.cancellations)) {
+      throw new Error(`${prefix}.cancellations must be an array.`);
+    }
+    series.cancellations.forEach((cancellation, cancellationIndex) => {
+      const cancellationPrefix = `${prefix}.cancellations[${cancellationIndex}]`;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(cancellation.date)
+        || cancellation.date < series.startsOn || cancellation.date > series.endsOn) {
+        throw new Error(`${cancellationPrefix}.date must fall inside the series range.`);
+      }
+      requireNonEmptyString(cancellation.reason, `${cancellationPrefix}.reason`);
+      if (new Date(`${cancellation.date}T12:00:00Z`).getUTCDay() !== WEEKDAYS[series.weekday]) {
+        throw new Error(`${cancellationPrefix}.date is not a ${series.weekday}.`);
+      }
+    });
+    assertUnique(series.cancellations.map((item) => item.date), `${prefix}.cancellations dates`);
+  });
+
+  assertUnique(document.weeklyPractices.map((series) => series.code), 'Weekly practice codes');
+  const generatedEvents = expandWeeklyPractices(document.weeklyPractices);
+  assertUnique(
+    [...document.events.map((event) => event.code), ...generatedEvents.map((event) => event.code)],
+    'All generated and one-off team event codes'
+  );
 }
 
 function validateObligationTypes(document) {
@@ -252,6 +332,21 @@ function validateBirthdayPlayerMappings(birthdaysDocument, playersDocument) {
   }
 }
 
+function validateTeamEventPlayerMappings(eventsDocument, playersDocument, fileName) {
+  const playerNames = new Set(playersDocument.players.map((player) => player.name.trim().toLowerCase()));
+  const participantLists = [
+    ...eventsDocument.events.map((event) => ({ code: event.code, names: event.playerNames })),
+    ...eventsDocument.weeklyPractices.map((series) => ({ code: series.code, names: series.playerNames }))
+  ];
+  for (const item of participantLists) {
+    for (const name of item.names) {
+      if (!playerNames.has(name.trim().toLowerCase())) {
+        throw new Error(`${fileName}: ${item.code} references unknown playerName: ${name}.`);
+      }
+    }
+  }
+}
+
 const playersDocument = readJson('seed/players.json');
 const birthdaysDocument = readJson('seed/birthdays.json');
 
@@ -260,7 +355,12 @@ validateFineTypes(readJson('seed/fine-types.json'));
 validateSettings(readJson('seed/settings.json'));
 validateBirthdays(birthdaysDocument);
 validateBirthdayPlayerMappings(birthdaysDocument, playersDocument);
-validateTeamEvents(readJson('seed/team-events.json'));
+const teamEventsDocument = readJson('seed/team-events.json');
+validateTeamEvents(teamEventsDocument);
+validateTeamEventPlayerMappings(teamEventsDocument, playersDocument, 'seed/team-events.json');
+const exampleEventsDocument = readJson('seed/team-events.example.json');
+validateTeamEvents(exampleEventsDocument);
+validateTeamEventPlayerMappings(exampleEventsDocument, playersDocument, 'seed/team-events.example.json');
 validateObligationTypes(readJson('seed/obligation-types.json'));
 
 console.log('Seed data is valid.');

@@ -70,9 +70,9 @@ Supabase player row. Keep both `month` and `day` as `null` until you know a
 player's date; fill both together. The sync stores these as `birth_month` and
 `birth_day` on `players`. Birth years are intentionally not collected.
 
-`team-events.json` contains one season and its changeable calendar. A full-team
-event must have an empty `playerNames` array. A partial practice must list the
-participating players:
+`team-events.json` contains one season, reusable weekly practice series, and
+one-off important events. A complete copyable example is in
+`team-events.example.json`.
 
 ```json
 {
@@ -83,23 +83,50 @@ participating players:
     "endDate": "2027-05-31",
     "active": true
   },
+  "weeklyPractices": [
+    {
+      "code": "monday-full-team-practice",
+      "name": "Monday full-team practice",
+      "weekday": "monday",
+      "startsOn": "2026-08-03",
+      "endsOn": "2027-05-31",
+      "startTime": "18:00",
+      "durationMinutes": 120,
+      "timeZone": "Europe/Bratislava",
+      "attendanceScope": "full_team",
+      "playerNames": [],
+      "location": "Main hall",
+      "notes": "",
+      "active": true,
+      "cancellations": [
+        { "date": "2026-12-28", "reason": "Christmas holiday" }
+      ]
+    }
+  ],
   "events": [
     {
-      "code": "training-2026-09-04-a",
-      "name": "Friday training",
-      "type": "training",
-      "startsAt": "2026-09-04T18:00:00+02:00",
-      "endsAt": "2026-09-04T20:00:00+02:00",
+      "code": "team-dinner-2026-12-19",
+      "name": "Christmas team dinner",
+      "type": "team_dinner",
+      "startsAt": "2026-12-19T19:00:00+01:00",
+      "endsAt": null,
       "attendanceScope": "full_team",
       "playerNames": [],
       "status": "scheduled",
-      "location": "Trnava",
+      "cancellationReason": null,
+      "location": "Restaurant",
       "notes": ""
     }
   ]
 }
 ```
 
-Only scheduled full-team events are eligible for automatically assigned
-birthday obligations. Database records remain editable by the administrator;
-the files provide repeatable starting data rather than an immutable calendar.
+Each weekly series expands into separate dated practice records. Use lowercase
+weekday names and local 24-hour time; `Europe/Bratislava` handles daylight-saving
+changes. Put holiday closures in `cancellations`. A full-team event must have an
+empty `playerNames` array, while a partial-team practice must list its players.
+
+One-off `events` support `practice`, `match`, `team_dinner`, and `other`. Only
+scheduled `full_team` events are eligible for birthday obligations. You can edit,
+cancel, or restore an individual generated practice in the admin UI. Later seed
+syncs preserve admin cancellations and completed generated practices.

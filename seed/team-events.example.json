@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "season": {
+    "name": "2026/27",
+    "startDate": "2026-08-01",
+    "endDate": "2027-05-31",
+    "active": true
+  },
+  "weeklyPractices": [
+    {
+      "code": "monday-full-team-practice",
+      "name": "Monday full-team practice",
+      "weekday": "monday",
+      "startsOn": "2026-08-03",
+      "endsOn": "2027-05-31",
+      "startTime": "18:00",
+      "durationMinutes": 120,
+      "timeZone": "Europe/Bratislava",
+      "attendanceScope": "full_team",
+      "playerNames": [],
+      "location": "Main hall",
+      "notes": "Regular practice for the entire team.",
+      "active": true,
+      "cancellations": [
+        {
+          "date": "2026-12-28",
+          "reason": "Christmas holiday"
+        }
+      ]
+    },
+    {
+      "code": "wednesday-group-practice",
+      "name": "Wednesday group practice",
+      "weekday": "wednesday",
+      "startsOn": "2026-08-05",
+      "endsOn": "2027-05-26",
+      "startTime": "19:30",
+      "durationMinutes": 90,
+      "timeZone": "Europe/Bratislava",
+      "attendanceScope": "partial_team",
+      "playerNames": ["Martin", "Šimon", "Samo"],
+      "location": "Small hall",
+      "notes": "Example practice for only part of the team.",
+      "active": true,
+      "cancellations": []
+    }
+  ],
+  "events": [
+    {
+      "code": "match-2026-09-12-home",
+      "name": "Home match",
+      "type": "match",
+      "startsAt": "2026-09-12T17:00:00+02:00",
+      "endsAt": "2026-09-12T20:00:00+02:00",
+      "attendanceScope": "full_team",
+      "playerNames": [],
+      "status": "scheduled",
+      "cancellationReason": null,
+      "location": "Trnava",
+      "notes": "Example match."
+    },
+    {
+      "code": "team-dinner-2026-12-19",
+      "name": "Christmas team dinner",
+      "type": "team_dinner",
+      "startsAt": "2026-12-19T19:00:00+01:00",
+      "endsAt": null,
+      "attendanceScope": "full_team",
+      "playerNames": [],
+      "status": "scheduled",
+      "cancellationReason": null,
+      "location": "Restaurant name",
+      "notes": "Example non-sport team event."
+    }
+  ]
+}

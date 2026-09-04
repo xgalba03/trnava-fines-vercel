@@ -37,15 +37,21 @@ create table if not exists public.team_events (
   season_id bigint not null references public.seasons(id) on delete restrict,
   code text not null unique check (code ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'),
   name text not null check (length(btrim(name)) > 0),
-  event_type text not null check (event_type in ('training', 'match', 'other')),
+  event_type text not null check (event_type in ('practice', 'match', 'team_dinner', 'other')),
   starts_at timestamptz not null,
   ends_at timestamptz,
+  recurrence_code text check (
+    recurrence_code is null or recurrence_code ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+  ),
+  scheduled_date date,
   attendance_scope text not null
     check (attendance_scope in ('full_team', 'partial_team')),
   status text not null default 'scheduled'
     check (status in ('scheduled', 'cancelled', 'completed')),
   location text,
   notes text,
+  cancellation_reason text,
+  cancelled_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users(id) on delete set null,
@@ -162,8 +168,9 @@ begin
   where id = new.scheduled_event_id;
   if not found
     or assigned_event.status <> 'scheduled'
-    or assigned_event.attendance_scope <> 'full_team' then
-    raise exception 'Obligations can only use a scheduled full-team event.';
+    or assigned_event.attendance_scope <> 'full_team'
+    or assigned_event.event_type not in ('practice', 'match') then
+    raise exception 'Obligations can only use a scheduled full-team practice or match.';
   end if;
   if new.season_id <> assigned_event.season_id then
     raise exception 'The obligation and assigned event must use the same season.';
@@ -312,7 +319,9 @@ declare
   replacement_event_id bigint;
   replacement_starts_at timestamptz;
 begin
-  if new.status = 'scheduled' and new.attendance_scope = 'full_team' then
+  if new.status = 'scheduled'
+    and new.attendance_scope = 'full_team'
+    and new.event_type in ('practice', 'match') then
     insert into public.obligation_events (
       obligation_id, event_type, from_event_id, to_event_id,
       old_due_at, new_due_at, note
@@ -341,6 +350,7 @@ begin
     and id <> new.id
     and status = 'scheduled'
     and attendance_scope = 'full_team'
+    and event_type in ('practice', 'match')
     and starts_at >= old.starts_at
   order by starts_at
   limit 1;
@@ -380,12 +390,13 @@ $$;
 
 drop trigger if exists team_events_move_obligations on public.team_events;
 create trigger team_events_move_obligations
-after update of starts_at, status, attendance_scope on public.team_events
+after update of starts_at, status, attendance_scope, event_type on public.team_events
 for each row
 when (
   old.starts_at is distinct from new.starts_at
   or old.status is distinct from new.status
   or old.attendance_scope is distinct from new.attendance_scope
+  or old.event_type is distinct from new.event_type
 )
 execute function public.move_obligations_with_event();
 
@@ -536,7 +547,8 @@ alter table public.financial_adjustments enable row level security;
 
 grant select (
   id, season_id, code, name, event_type, starts_at, ends_at,
-  attendance_scope, status, location, notes, created_at, updated_at
+  recurrence_code, scheduled_date, attendance_scope, status, location, notes,
+  cancellation_reason, cancelled_at, created_at, updated_at
 )
 on public.team_events to anon, authenticated;
 grant select on public.team_event_players to anon, authenticated;

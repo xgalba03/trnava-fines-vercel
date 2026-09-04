@@ -39,12 +39,13 @@ async function eligibleEvent(supabase, eventId) {
   if (!eventId) return null;
   const { data, error } = await supabase
     .from('team_events')
-    .select('id, season_id, starts_at, status, attendance_scope')
+    .select('id, season_id, starts_at, status, attendance_scope, event_type')
     .eq('id', eventId)
     .maybeSingle();
   if (error) throw error;
-  if (!data || data.status !== 'scheduled' || data.attendance_scope !== 'full_team') {
-    throw new Error('Obligations can only be assigned to a scheduled full-team event.');
+  if (!data || data.status !== 'scheduled' || data.attendance_scope !== 'full_team'
+    || !['practice', 'match'].includes(data.event_type)) {
+    throw new Error('Obligations can only be assigned to a scheduled full-team practice or match.');
   }
   return data;
 }

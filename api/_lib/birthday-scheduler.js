@@ -35,6 +35,7 @@ async function scheduleBirthdays(supabase, userId, season) {
       .eq('season_id', season.id)
       .eq('status', 'scheduled')
       .eq('attendance_scope', 'full_team')
+      .in('event_type', ['practice', 'match'])
       .order('starts_at', { ascending: true }),
     supabase.from('obligation_types').select('id').eq('code', 'birthday-snack').single()
   ]);
@@ -154,6 +155,7 @@ async function scheduleNewArrivals(supabase, userId, season) {
       .eq('season_id', season.id)
       .eq('status', 'scheduled')
       .eq('attendance_scope', 'full_team')
+      .in('event_type', ['practice', 'match'])
       .order('starts_at', { ascending: true }),
     supabase.from('obligation_types').select('id').eq('code', 'new-arrival-beer').single()
   ]);

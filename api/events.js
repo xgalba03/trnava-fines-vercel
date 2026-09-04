@@ -16,7 +16,8 @@ async function listEvents(supabase) {
     .from('team_events')
     .select([
       'id', 'season_id', 'code', 'name', 'event_type', 'starts_at', 'ends_at',
-      'attendance_scope', 'status', 'location', 'notes',
+      'recurrence_code', 'scheduled_date', 'attendance_scope', 'status',
+      'location', 'notes', 'cancellation_reason', 'cancelled_at',
       'participants:team_event_players(player_id, player:players(id, name))'
     ].join(', '))
     .order('starts_at', { ascending: true });
@@ -53,9 +54,15 @@ module.exports = async function handler(request, response) {
 
     if (action === 'cancel') {
       const eventId = positiveId(body.event_id, 'Event');
+      const cancellationReason = cleanText(body.cancellation_reason) || 'Cancelled by administrator.';
       const { error } = await supabase
         .from('team_events')
-        .update({ status: 'cancelled', updated_by: user.id })
+        .update({
+          status: 'cancelled',
+          cancellation_reason: cancellationReason,
+          cancelled_at: new Date().toISOString(),
+          updated_by: user.id
+        })
         .eq('id', eventId);
       if (error) throw error;
       return response.status(200).json(await eventPayload(supabase));
@@ -66,7 +73,7 @@ module.exports = async function handler(request, response) {
     const seasonId = positiveId(body.season_id, 'Season');
     const code = cleanText(body.code);
     const name = cleanText(body.name);
-    const eventType = String(body.event_type || 'training');
+    const eventType = String(body.event_type || 'practice');
     const attendanceScope = String(body.attendance_scope || 'full_team');
     const eventStatus = String(body.status || 'scheduled');
     const startsAt = new Date(body.starts_at);
@@ -75,7 +82,7 @@ module.exports = async function handler(request, response) {
       return response.status(400).json({ error: 'Use a stable lowercase event code with hyphens.' });
     }
     if (!name) return response.status(400).json({ error: 'Event name is required.' });
-    if (!['training', 'match', 'other'].includes(eventType)) {
+    if (!['practice', 'match', 'team_dinner', 'other'].includes(eventType)) {
       return response.status(400).json({ error: 'Invalid event type.' });
     }
     if (!['full_team', 'partial_team'].includes(attendanceScope)) {
@@ -107,6 +114,10 @@ module.exports = async function handler(request, response) {
       status: eventStatus,
       location: cleanText(body.location),
       notes: cleanText(body.notes),
+      cancellation_reason: eventStatus === 'cancelled'
+        ? (cleanText(body.cancellation_reason) || 'Cancelled by administrator.')
+        : null,
+      cancelled_at: eventStatus === 'cancelled' ? new Date().toISOString() : null,
       updated_by: user.id
     };
     const result = eventId

@@ -1,5 +1,6 @@
 const { createServiceClient, requireAdmin } = require('./_lib/supabase');
 const { scheduleBirthdays, scheduleNewArrivals } = require('./_lib/birthday-scheduler');
+const { expandWeeklyPractices } = require('./_lib/weekly-events');
 const playersSeed = require('../seed/players.json');
 const fineTypesSeed = require('../seed/fine-types.json');
 const birthdaysSeed = require('../seed/birthdays.json');
@@ -99,26 +100,46 @@ async function syncCalendar(supabase, playersByName, userId) {
     .single();
   if (seasonError) throw seasonError;
 
-  for (const event of eventsSeed.events) {
+  const generatedPractices = expandWeeklyPractices(eventsSeed.weeklyPractices || []);
+  const allEvents = [...generatedPractices, ...eventsSeed.events];
+  const { data: existingEvents, error: existingError } = await supabase
+    .from('team_events')
+    .select('id, code, status, cancellation_reason, cancelled_at, recurrence_code, starts_at')
+    .eq('season_id', season.id);
+  if (existingError) throw existingError;
+  const existingByCode = new Map((existingEvents || []).map((event) => [event.code, event]));
+
+  for (const event of allEvents) {
+    const current = existingByCode.get(event.code);
+    const generated = Boolean(event.recurrenceCode);
+    const preserveAdminStatus = generated
+      && ['cancelled', 'completed'].includes(current?.status)
+      && event.status === 'scheduled';
+    const status = preserveAdminStatus ? current.status : event.status;
+    const cancellationReason = status === 'cancelled'
+      ? (event.cancellationReason || current?.cancellation_reason || 'Cancelled by administrator.')
+      : null;
     const values = {
       season_id: season.id,
       code: event.code,
       name: event.name,
-      event_type: event.type,
+      event_type: event.type === 'training' ? 'practice' : event.type,
       starts_at: new Date(event.startsAt).toISOString(),
       ends_at: event.endsAt ? new Date(event.endsAt).toISOString() : null,
+      recurrence_code: event.recurrenceCode || null,
+      scheduled_date: event.scheduledDate || null,
       attendance_scope: event.attendanceScope,
-      status: event.status,
+      status,
       location: String(event.location || '').trim() || null,
       notes: String(event.notes || '').trim() || null,
-      created_by: userId,
+      cancellation_reason: cancellationReason,
+      cancelled_at: status === 'cancelled' ? (current?.cancelled_at || new Date().toISOString()) : null,
       updated_by: userId
     };
-    const { data: saved, error } = await supabase
-      .from('team_events')
-      .upsert(values, { onConflict: 'code' })
-      .select('id')
-      .single();
+    const result = current
+      ? await supabase.from('team_events').update(values).eq('id', current.id).select('id').single()
+      : await supabase.from('team_events').insert({ ...values, created_by: userId }).select('id').single();
+    const { data: saved, error } = result;
     if (error) throw error;
     const { error: deleteError } = await supabase.from('team_event_players').delete().eq('event_id', saved.id);
     if (deleteError) throw deleteError;
@@ -132,7 +153,29 @@ async function syncCalendar(supabase, playersByName, userId) {
       if (participantError) throw participantError;
     }
   }
-  return { season, events: eventsSeed.events.length };
+
+  const generatedCodes = new Set(generatedPractices.map((event) => event.code));
+  const managedSeries = new Set((eventsSeed.weeklyPractices || []).map((series) => series.code));
+  const now = new Date();
+  for (const existing of existingEvents || []) {
+    if (!managedSeries.has(existing.recurrence_code)
+      || generatedCodes.has(existing.code)
+      || existing.status !== 'scheduled'
+      || new Date(existing.starts_at) < now) continue;
+    const { error } = await supabase.from('team_events').update({
+      status: 'cancelled',
+      cancellation_reason: 'Removed from the recurring seed schedule.',
+      cancelled_at: new Date().toISOString(),
+      updated_by: userId
+    }).eq('id', existing.id);
+    if (error) throw error;
+  }
+
+  return {
+    season,
+    events: allEvents.length,
+    weeklyPractices: generatedPractices.length
+  };
 }
 
 module.exports = async function handler(request, response) {
@@ -168,6 +211,7 @@ module.exports = async function handler(request, response) {
         obligationTypes,
         birthdays,
         events: calendar.events,
+        weeklyPractices: calendar.weeklyPractices || 0,
         birthdayObligations,
         newArrivalObligations
       }
