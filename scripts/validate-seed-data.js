@@ -53,6 +53,15 @@ function validatePlayers(document) {
       throw new Error(`${prefix}.jerseyNumber must be an integer or null.`);
     }
     requireBoolean(player.active, `${prefix}.active`);
+    for (const field of ['joinedOn', 'leftOn']) {
+      if (player[field] !== undefined && player[field] !== null
+        && !/^\d{4}-\d{2}-\d{2}$/.test(player[field])) {
+        throw new Error(`${prefix}.${field} must be YYYY-MM-DD, null or omitted.`);
+      }
+    }
+    if (player.joinedOn && player.leftOn && player.leftOn < player.joinedOn) {
+      throw new Error(`${prefix}.leftOn cannot be before joinedOn.`);
+    }
   });
 
   assertUnique(document.players.map((player) => player.name), 'Player names');
@@ -75,8 +84,21 @@ function validateFineTypes(document) {
     if (typeof fineType.description !== 'string') {
       throw new Error(`${prefix}.description must be a string.`);
     }
+    if (!['fixed', 'per_unit'].includes(fineType.calculationMode)) {
+      throw new Error(`${prefix}.calculationMode must be fixed or per_unit.`);
+    }
     if (!Number.isFinite(fineType.defaultAmount) || fineType.defaultAmount <= 0) {
       throw new Error(`${prefix}.defaultAmount must be a positive number.`);
+    }
+    if (fineType.calculationMode === 'per_unit') {
+      requireNonEmptyString(fineType.unitName, `${prefix}.unitName`);
+    } else if (fineType.unitName !== null) {
+      throw new Error(`${prefix}.unitName must be null for a fixed fine.`);
+    }
+    requireBoolean(fineType.matchDayOnly, `${prefix}.matchDayOnly`);
+    requireBoolean(fineType.doubleOnMatchDay, `${prefix}.doubleOnMatchDay`);
+    if (!Number.isFinite(fineType.matchDayMultiplier) || fineType.matchDayMultiplier < 1) {
+      throw new Error(`${prefix}.matchDayMultiplier must be at least 1.`);
     }
     requireNonEmptyString(fineType.category, `${prefix}.category`);
     requireBoolean(fineType.active, `${prefix}.active`);
@@ -99,10 +121,129 @@ function validateSettings(document) {
     throw new Error('settings.dailyLatePaymentFine must be a positive number.');
   }
   requireBoolean(settings.latePenaltiesEnabled, 'settings.latePenaltiesEnabled');
+  if (!Number.isFinite(settings.defaultMatchDayMultiplier)
+    || settings.defaultMatchDayMultiplier < 1) {
+    throw new Error('settings.defaultMatchDayMultiplier must be at least 1.');
+  }
+}
+
+function validateBirthdays(document) {
+  requireVersionOne(document, 'seed/birthdays.json');
+  if (!Array.isArray(document.birthdays)) {
+    throw new Error('seed/birthdays.json: birthdays must be an array.');
+  }
+
+  document.birthdays.forEach((birthday, index) => {
+    const prefix = `seed/birthdays.json: birthdays[${index}]`;
+    requireNonEmptyString(birthday.playerName, `${prefix}.playerName`);
+    if (!Number.isInteger(birthday.month) || birthday.month < 1 || birthday.month > 12) {
+      throw new Error(`${prefix}.month must be an integer from 1 to 12.`);
+    }
+    if (!Number.isInteger(birthday.day) || birthday.day < 1 || birthday.day > 31) {
+      throw new Error(`${prefix}.day must be an integer from 1 to 31.`);
+    }
+    const date = new Date(Date.UTC(2000, birthday.month - 1, birthday.day));
+    if (date.getUTCMonth() !== birthday.month - 1 || date.getUTCDate() !== birthday.day) {
+      throw new Error(`${prefix} is not a valid calendar date.`);
+    }
+  });
+
+  assertUnique(document.birthdays.map((birthday) => birthday.playerName), 'Birthday player names');
+}
+
+function validateTeamEvents(document) {
+  requireVersionOne(document, 'seed/team-events.json');
+  if (!Array.isArray(document.events)) {
+    throw new Error('seed/team-events.json: events must be an array.');
+  }
+  if (document.season === null) {
+    if (document.events.length) {
+      throw new Error('seed/team-events.json: season is required when events are present.');
+    }
+    return;
+  }
+
+  requireNonEmptyString(document.season?.name, 'seed/team-events.json: season.name');
+  const startDate = new Date(`${document.season.startDate}T00:00:00Z`);
+  const endDate = new Date(`${document.season.endDate}T00:00:00Z`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+    throw new Error('seed/team-events.json: season dates must be valid and ordered.');
+  }
+
+  document.events.forEach((event, index) => {
+    const prefix = `seed/team-events.json: events[${index}]`;
+    requireNonEmptyString(event.code, `${prefix}.code`);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(event.code)) {
+      throw new Error(`${prefix}.code must use lowercase words separated by hyphens.`);
+    }
+    requireNonEmptyString(event.name, `${prefix}.name`);
+    if (!['training', 'match', 'other'].includes(event.type)) {
+      throw new Error(`${prefix}.type must be training, match or other.`);
+    }
+    if (!['full_team', 'partial_team'].includes(event.attendanceScope)) {
+      throw new Error(`${prefix}.attendanceScope must be full_team or partial_team.`);
+    }
+    if (!['scheduled', 'cancelled', 'completed'].includes(event.status)) {
+      throw new Error(`${prefix}.status must be scheduled, cancelled or completed.`);
+    }
+    const startsAt = new Date(event.startsAt);
+    const endsAt = event.endsAt ? new Date(event.endsAt) : null;
+    if (Number.isNaN(startsAt.getTime()) || (endsAt && Number.isNaN(endsAt.getTime()))) {
+      throw new Error(`${prefix} has an invalid date/time.`);
+    }
+    if (endsAt && endsAt <= startsAt) {
+      throw new Error(`${prefix}.endsAt must be after startsAt.`);
+    }
+    if (!Array.isArray(event.playerNames)) {
+      throw new Error(`${prefix}.playerNames must be an array.`);
+    }
+    if (event.attendanceScope === 'full_team' && event.playerNames.length) {
+      throw new Error(`${prefix}.playerNames must be empty for a full-team event.`);
+    }
+    if (event.attendanceScope === 'partial_team' && !event.playerNames.length) {
+      throw new Error(`${prefix}.playerNames must identify the partial group.`);
+    }
+    event.playerNames.forEach((name, playerIndex) => {
+      requireNonEmptyString(name, `${prefix}.playerNames[${playerIndex}]`);
+    });
+    assertUnique(event.playerNames, `${prefix}.playerNames`);
+  });
+
+  assertUnique(document.events.map((event) => event.code), 'Team event codes');
+}
+
+function validateObligationTypes(document) {
+  requireVersionOne(document, 'seed/obligation-types.json');
+  if (!Array.isArray(document.obligationTypes)) {
+    throw new Error('seed/obligation-types.json: obligationTypes must be an array.');
+  }
+
+  document.obligationTypes.forEach((type, index) => {
+    const prefix = `seed/obligation-types.json: obligationTypes[${index}]`;
+    requireNonEmptyString(type.code, `${prefix}.code`);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(type.code)) {
+      throw new Error(`${prefix}.code must use lowercase words separated by hyphens.`);
+    }
+    requireNonEmptyString(type.name, `${prefix}.name`);
+    requireNonEmptyString(type.description, `${prefix}.description`);
+    requireNonEmptyString(type.itemName, `${prefix}.itemName`);
+    if (!['once', 'annual'].includes(type.recurrence)) {
+      throw new Error(`${prefix}.recurrence must be once or annual.`);
+    }
+    if (!Number.isFinite(type.dailyPenaltyAmount) || type.dailyPenaltyAmount < 0) {
+      throw new Error(`${prefix}.dailyPenaltyAmount must be a non-negative number.`);
+    }
+    requireBoolean(type.active, `${prefix}.active`);
+  });
+
+  assertUnique(document.obligationTypes.map((type) => type.code), 'Obligation type codes');
 }
 
 validatePlayers(readJson('seed/players.json'));
 validateFineTypes(readJson('seed/fine-types.json'));
 validateSettings(readJson('seed/settings.json'));
+validateBirthdays(readJson('seed/birthdays.json'));
+validateTeamEvents(readJson('seed/team-events.json'));
+validateObligationTypes(readJson('seed/obligation-types.json'));
 
 console.log('Seed data is valid.');

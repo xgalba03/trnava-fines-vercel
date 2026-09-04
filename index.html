@@ -19,7 +19,7 @@
       }
 
       main {
-        width: min(100%, 40rem);
+        width: min(100%, 58rem);
         margin: 0 auto;
         padding: 2rem;
         background: #ffffff;
@@ -33,6 +33,10 @@
       }
 
       #fine-entry[hidden] {
+        display: none;
+      }
+
+      .admin-only[hidden] {
         display: none;
       }
 
@@ -95,7 +99,72 @@
       }
 
       #fine-form {
-        grid-template-columns: 10rem 1fr 8rem auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #event-form,
+      #obligation-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .panel {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 2px solid #dfe5eb;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.4rem;
+      }
+
+      .actions button {
+        min-height: 2rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+      }
+
+      .item-copy {
+        display: grid;
+        gap: 0.2rem;
+      }
+
+      .meta {
+        color: #52606d;
+        font-size: 0.82rem;
+      }
+
+      .form-field {
+        display: grid;
+        gap: 0.25rem;
+        color: #52606d;
+        font-size: 0.875rem;
+      }
+
+      .full-width {
+        grid-column: 1 / -1;
+      }
+
+      .checkbox-field {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 2.5rem;
+      }
+
+      .checkbox-field input {
+        min-height: auto;
+        width: 1.1rem;
+        height: 1.1rem;
+      }
+
+      #calculation {
+        grid-column: 1 / -1;
+        min-height: 1.25rem;
+        margin: 0;
+        color: #17202a;
       }
 
       input,
@@ -152,7 +221,9 @@
         }
 
         form,
-        #fine-form {
+        #fine-form,
+        #event-form,
+        #obligation-form {
           grid-template-columns: 1fr;
         }
       }
@@ -181,12 +252,40 @@
         <div id="fine-entry" hidden>
           <p>Add a fine below. It is saved to the database.</p>
           <form id="fine-form">
-            <select name="player_id" aria-label="Player" required disabled>
-              <option value="">Loading players...</option>
-            </select>
-            <input name="description" placeholder="What happened?" required maxlength="120" />
-            <input name="amount" type="number" min="0.01" step="0.01" placeholder="Amount" required />
-            <button type="submit">Add fine</button>
+            <label class="form-field">
+              <span>Player</span>
+              <select name="player_id" required disabled>
+                <option value="">Loading players...</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Fine</span>
+              <select name="fine_type_id" required disabled>
+                <option value="">Loading fine types...</option>
+              </select>
+            </label>
+            <label class="checkbox-field full-width">
+              <input name="is_match_day" type="checkbox" />
+              <span id="match-day-label">Match day</span>
+            </label>
+            <label id="quantity-field" class="form-field" hidden>
+              <span id="quantity-label">Quantity</span>
+              <input name="quantity" type="number" min="1" step="1" value="1" />
+            </label>
+            <label class="form-field">
+              <span>Final amount (€)</span>
+              <input name="amount" type="number" min="0.01" step="0.01" required />
+            </label>
+            <label class="form-field">
+              <span>Occurred at</span>
+              <input name="occurred_at" type="datetime-local" required />
+            </label>
+            <label class="form-field full-width">
+              <span id="note-label">Optional note</span>
+              <input name="note" maxlength="500" placeholder="Additional context" />
+            </label>
+            <p id="calculation" role="status"></p>
+            <button class="full-width" type="submit">Add fine</button>
           </form>
         </div>
         <section id="password-settings" hidden>
@@ -198,9 +297,63 @@
           </form>
           <p id="password-status" role="status"></p>
         </section>
-        <p>Recent fines</p>
+        <section id="admin-tools" class="panel admin-only" hidden>
+          <h2>Admin data tools</h2>
+          <p>Sync the version-controlled seed files, or recalculate automatic birthday dates after calendar changes.</p>
+          <div class="actions">
+            <button id="sync-seed" type="button">Sync seed files</button>
+            <button id="schedule-birthdays" class="secondary" type="button">Schedule birthdays</button>
+          </div>
+          <p id="admin-tools-status" role="status"></p>
+        </section>
+        <section class="panel">
+          <h2>Team events</h2>
+          <div id="event-admin" class="admin-only" hidden>
+            <form id="event-form">
+              <input name="event_id" type="hidden" />
+              <label class="form-field"><span>Season</span><select name="season_id" required></select></label>
+              <label class="form-field"><span>Stable code</span><input name="code" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></label>
+              <label class="form-field"><span>Name</span><input name="name" required /></label>
+              <label class="form-field"><span>Type</span><select name="event_type"><option value="training">Training</option><option value="match">Match</option><option value="other">Other</option></select></label>
+              <label class="form-field"><span>Starts</span><input name="starts_at" type="datetime-local" required /></label>
+              <label class="form-field"><span>Ends (optional)</span><input name="ends_at" type="datetime-local" /></label>
+              <label class="form-field"><span>Attendance</span><select name="attendance_scope"><option value="full_team">Full team</option><option value="partial_team">Part of team</option></select></label>
+              <label class="form-field"><span>Status</span><select name="status"><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+              <label id="event-players-field" class="form-field full-width" hidden><span>Players attending (Ctrl/Cmd for several)</span><select name="player_ids" multiple size="5"></select></label>
+              <label class="form-field"><span>Location</span><input name="location" /></label>
+              <label class="form-field"><span>Notes</span><input name="notes" /></label>
+              <div class="actions full-width"><button id="event-reset" class="secondary" type="button">Clear</button><button type="submit">Save event</button></div>
+            </form>
+            <p id="event-status" role="status"></p>
+          </div>
+          <ul id="events"></ul>
+        </section>
+        <section class="panel">
+          <h2>Player obligations</h2>
+          <div id="obligation-admin" class="admin-only" hidden>
+            <form id="obligation-form">
+              <input name="obligation_id" type="hidden" />
+              <label class="form-field"><span>Player</span><select name="player_id" required></select></label>
+              <label class="form-field"><span>Obligation</span><select name="obligation_type_id" required></select></label>
+              <label class="form-field"><span>Full-team event</span><select name="scheduled_event_id" required></select></label>
+              <label class="form-field"><span>Trigger date</span><input name="trigger_date" type="date" required /></label>
+              <label class="form-field full-width"><span>Note</span><input name="note" /></label>
+              <div class="actions full-width"><button id="obligation-reset" class="secondary" type="button">Clear</button><button id="obligation-submit" type="submit">Add obligation</button></div>
+            </form>
+            <p id="obligation-status" role="status"></p>
+          </div>
+          <ul id="obligations"></ul>
+        </section>
+        <section class="panel">
+          <h2>Objections</h2>
+          <p>A submitted objection costs €1. If accepted, the original fine is voided and a €2 account credit is recorded.</p>
+          <ul id="objections"></ul>
+        </section>
+        <section class="panel">
+        <h2>Recent fines</h2>
         <p id="status" role="status"></p>
         <ul id="fines"></ul>
+        </section>
       </section>
     </main>
     <script>
@@ -216,19 +369,56 @@
       const passwordStatus = document.querySelector('#password-status');
       const form = document.querySelector('#fine-form');
       const playerSelect = form.elements.player_id;
+      const fineTypeSelect = form.elements.fine_type_id;
+      const matchDayInput = form.elements.is_match_day;
+      const matchDayLabel = document.querySelector('#match-day-label');
+      const quantityField = document.querySelector('#quantity-field');
+      const quantityLabel = document.querySelector('#quantity-label');
+      const quantityInput = form.elements.quantity;
+      const amountInput = form.elements.amount;
+      const occurredAtInput = form.elements.occurred_at;
+      const noteInput = form.elements.note;
+      const noteLabel = document.querySelector('#note-label');
+      const calculation = document.querySelector('#calculation');
       const status = document.querySelector('#status');
       const fines = document.querySelector('#fines');
+
+      const adminOnly = document.querySelectorAll('.admin-only');
+      const syncSeedButton = document.querySelector('#sync-seed');
+      const scheduleBirthdaysButton = document.querySelector('#schedule-birthdays');
+      const adminToolsStatus = document.querySelector('#admin-tools-status');
+      const eventForm = document.querySelector('#event-form');
+      const eventStatus = document.querySelector('#event-status');
+      const eventList = document.querySelector('#events');
+      const eventPlayersField = document.querySelector('#event-players-field');
+      const eventReset = document.querySelector('#event-reset');
+      const obligationForm = document.querySelector('#obligation-form');
+      const obligationStatus = document.querySelector('#obligation-status');
+      const obligationList = document.querySelector('#obligations');
+      const obligationReset = document.querySelector('#obligation-reset');
+      const obligationSubmit = document.querySelector('#obligation-submit');
+      const objectionList = document.querySelector('#objections');
+
+      const fineTypesById = new Map();
+      const playersById = new Map();
+      const eventsById = new Map();
+      let isAdmin = false;
 
       let accessToken = localStorage.getItem('trnava_access_token');
       let refreshToken = localStorage.getItem('trnava_refresh_token');
       let expiresAt = localStorage.getItem('trnava_expires_at');
 
       function updateAuthUi(loggedIn, showForm = false) {
+        isAdmin = loggedIn;
         auth.hidden = loggedIn || !showForm;
         fineEntry.hidden = !loggedIn;
         passwordSettings.hidden = !loggedIn;
+        adminOnly.forEach((element) => { element.hidden = !loggedIn; });
         login.hidden = loggedIn;
         logout.hidden = !loggedIn;
+        if (eventList.childElementCount) loadEvents().catch((error) => { eventStatus.textContent = error.message; });
+        if (obligationList.childElementCount) loadObligations().catch((error) => { obligationStatus.textContent = error.message; });
+        if (objectionList.childElementCount) loadObjections().catch((error) => { status.textContent = error.message; });
       }
 
       function saveSession(session) {
@@ -315,17 +505,145 @@
         return response;
       }
 
+      function roundMoney(value) {
+        return Math.round((value + Number.EPSILON) * 100) / 100;
+      }
+
+      function related(value) {
+        return Array.isArray(value) ? value[0] : value;
+      }
+
+      function localInputValue(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        return local.toISOString().slice(0, 16);
+      }
+
+      function dateLabel(value) {
+        if (!value) return 'not scheduled';
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: 'medium', timeStyle: 'short'
+        }).format(new Date(value));
+      }
+
+      function option(value, label) {
+        const element = document.createElement('option');
+        element.value = String(value);
+        element.textContent = label;
+        return element;
+      }
+
+      function actionButton(label, action, secondary = true) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        if (secondary) button.className = 'secondary';
+        button.addEventListener('click', async () => {
+          try {
+            await action();
+          } catch (error) {
+            status.textContent = error.message;
+          }
+        });
+        return button;
+      }
+
+      function setCurrentOccurredAt() {
+        const now = new Date();
+        const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+        occurredAtInput.value = localTime.toISOString().slice(0, 16);
+      }
+
+      function updateFineCalculation(resetAmount = true) {
+        const fineType = fineTypesById.get(fineTypeSelect.value);
+        if (!fineType) {
+          quantityField.hidden = true;
+          quantityInput.required = false;
+          matchDayInput.disabled = false;
+          matchDayLabel.textContent = 'Match day';
+          noteInput.required = false;
+          noteLabel.textContent = 'Optional note';
+          noteInput.placeholder = 'Additional context';
+          calculation.textContent = '';
+          if (resetAmount) amountInput.value = '';
+          return;
+        }
+
+        if (fineType.match_day_only) matchDayInput.checked = true;
+        matchDayInput.disabled = fineType.match_day_only;
+        matchDayLabel.textContent = fineType.match_day_only
+          ? 'Match day (required for this fine)'
+          : 'Match day';
+        const requiresCustomDescription = fineType.code === 'custom-fine';
+        noteInput.required = requiresCustomDescription;
+        noteLabel.textContent = requiresCustomDescription
+          ? 'Custom fine description'
+          : 'Optional note';
+        noteInput.placeholder = requiresCustomDescription
+          ? 'Describe what happened'
+          : 'Additional context';
+
+        const usesQuantity = fineType.calculation_mode === 'per_unit';
+        quantityField.hidden = !usesQuantity;
+        quantityInput.required = usesQuantity;
+        if (!usesQuantity) quantityInput.value = '1';
+        quantityLabel.textContent = usesQuantity
+          ? `Number of ${fineType.unit_name}s`
+          : 'Quantity';
+
+        const quantity = usesQuantity ? Number(quantityInput.value) : 1;
+        const rate = Number(fineType.default_amount);
+        const multiplier = matchDayInput.checked && fineType.double_on_match_day
+          ? Number(fineType.match_day_multiplier)
+          : 1;
+        if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(rate)) {
+          calculation.textContent = '';
+          if (resetAmount) amountInput.value = '';
+          return;
+        }
+
+        const base = roundMoney(rate * quantity);
+        const total = roundMoney(base * multiplier);
+        const unitText = usesQuantity
+          ? `${quantity} ${fineType.unit_name}${quantity === 1 ? '' : 's'} × €${rate.toFixed(2)}`
+          : `€${rate.toFixed(2)}`;
+        const multiplierText = multiplier > 1 ? ` × match-day ${multiplier}` : '';
+        calculation.textContent = `${unitText}${multiplierText} = €${total.toFixed(2)}`;
+        if (resetAmount) amountInput.value = total.toFixed(2);
+      }
+
       function render(items) {
         fines.replaceChildren(...items.map((fine) => {
           const item = document.createElement('li');
           const description = document.createElement('span');
           const amount = document.createElement('strong');
           const relatedPlayer = Array.isArray(fine.player) ? fine.player[0] : fine.player;
-          description.textContent = relatedPlayer?.name
-            ? `${relatedPlayer.name}: ${fine.description}`
-            : fine.description;
-          amount.textContent = Number(fine.amount).toFixed(2);
-          item.append(description, amount);
+          const fineName = fine.name || fine.description;
+          const quantityText = Number(fine.quantity) > 1 && fine.unit_name_snapshot
+            ? ` (${Number(fine.quantity)} ${fine.unit_name_snapshot}s)`
+            : '';
+          const multiplierText = Number(fine.multiplier_applied) > 1
+            ? ` ×${Number(fine.multiplier_applied)} match day`
+            : '';
+          const overrideText = fine.amount_overridden ? ' (adjusted)' : '';
+          description.textContent = `${relatedPlayer?.name ? `${relatedPlayer.name}: ` : ''}`
+            + `${fineName}${quantityText}${multiplierText}${overrideText}`;
+          amount.textContent = `€${Number(fine.amount).toFixed(2)}`;
+          const right = document.createElement('div');
+          right.className = 'actions';
+          right.append(amount);
+          if (isAdmin && fine.player_id && fine.type === 'normal' && !fine.objection_id) {
+            right.append(actionButton('Object', async () => {
+              const reason = window.prompt('Reason for the objection (€1 filing fee):');
+              if (!reason?.trim()) return;
+              await runAdminAction('/api/objections', {
+                action: 'submit', fine_id: fine.id, reason
+              }, status);
+              await Promise.all([loadFines(), loadObjections()]);
+            }));
+          }
+          item.append(description, right);
           return item;
         }));
       }
@@ -342,21 +660,337 @@
         const data = await readJson(response);
         if (!response.ok) throw new Error(data.error || 'Unable to load players.');
 
-        const options = (data.players || []).map((player) => {
-          const option = document.createElement('option');
-          option.value = String(player.id);
-          option.textContent = player.jersey_number === null
+        playersById.clear();
+        const playerOptions = (data.players || []).map((player) => {
+          playersById.set(String(player.id), player);
+          return option(player.id, player.jersey_number === null
             ? player.name
-            : `${player.name} #${player.jersey_number}`;
+            : `${player.name} #${player.jersey_number}`);
+        });
+
+        const placeholder = option('', playerOptions.length ? 'Select player' : 'No active players');
+        playerSelect.replaceChildren(placeholder, ...playerOptions);
+        playerSelect.disabled = playerOptions.length === 0;
+        obligationForm.elements.player_id.replaceChildren(
+          option('', 'Select player'),
+          ...[...playersById.values()].map((player) => option(player.id, player.name))
+        );
+        eventForm.elements.player_ids.replaceChildren(
+          ...[...playersById.values()].map((player) => option(player.id, player.name))
+        );
+      }
+
+      async function loadFineTypes() {
+        const response = await fetch('/api/fine-types');
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load fine types.');
+
+        fineTypesById.clear();
+        const options = (data.fineTypes || []).map((fineType) => {
+          fineTypesById.set(String(fineType.id), fineType);
+          const option = document.createElement('option');
+          option.value = String(fineType.id);
+          option.textContent = `${fineType.category} — ${fineType.name}`;
           return option;
         });
 
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = options.length ? 'Select player' : 'No active players';
-        playerSelect.replaceChildren(placeholder, ...options);
-        playerSelect.disabled = options.length === 0;
+        placeholder.textContent = options.length ? 'Select fine' : 'No active fine types';
+        fineTypeSelect.replaceChildren(placeholder, ...options);
+        fineTypeSelect.disabled = options.length === 0;
+        updateFineCalculation();
       }
+
+      async function runAdminAction(url, body, targetStatus) {
+        targetStatus.textContent = 'Saving...';
+        const response = await authorizedFetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await readJson(response);
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) showLogin(data.error);
+          targetStatus.textContent = data.error || 'The change could not be saved.';
+          throw new Error(data.error || 'The change could not be saved.');
+        }
+        targetStatus.textContent = data.message || 'Saved.';
+        return data;
+      }
+
+      function resetEventForm() {
+        eventForm.reset();
+        eventForm.elements.event_id.value = '';
+        eventPlayersField.hidden = true;
+      }
+
+      function editEvent(event) {
+        const formElements = eventForm.elements;
+        formElements.event_id.value = event.id;
+        formElements.season_id.value = event.season_id;
+        formElements.code.value = event.code;
+        formElements.name.value = event.name;
+        formElements.event_type.value = event.event_type;
+        formElements.starts_at.value = localInputValue(event.starts_at);
+        formElements.ends_at.value = localInputValue(event.ends_at);
+        formElements.attendance_scope.value = event.attendance_scope;
+        formElements.status.value = event.status;
+        formElements.location.value = event.location || '';
+        formElements.notes.value = event.notes || '';
+        const selected = new Set((event.participants || []).map((item) => String(item.player_id)));
+        [...formElements.player_ids.options].forEach((item) => { item.selected = selected.has(item.value); });
+        eventPlayersField.hidden = event.attendance_scope !== 'partial_team';
+        eventForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      function renderEvents(items) {
+        eventsById.clear();
+        eventList.replaceChildren(...items.map((event) => {
+          eventsById.set(String(event.id), event);
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          copy.className = 'item-copy';
+          const title = document.createElement('strong');
+          title.textContent = event.name;
+          const participantNames = (event.participants || [])
+            .map((entry) => related(entry.player)?.name)
+            .filter(Boolean);
+          const detail = document.createElement('span');
+          detail.className = 'meta';
+          detail.textContent = `${dateLabel(event.starts_at)} · ${event.attendance_scope === 'full_team' ? 'full team' : participantNames.join(', ')} · ${event.status}`;
+          copy.append(title, detail);
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          if (isAdmin) {
+            actions.append(actionButton('Edit', () => editEvent(event)));
+            if (event.status !== 'cancelled') {
+              actions.append(actionButton('Cancel', async () => {
+                if (!window.confirm(`Cancel ${event.name}? Linked obligations will move to the next eligible full-team event.`)) return;
+                await runAdminAction('/api/events', { action: 'cancel', event_id: event.id }, eventStatus);
+                await Promise.all([loadEvents(), loadObligations()]);
+              }));
+            }
+          }
+          item.append(copy, actions);
+          return item;
+        }));
+      }
+
+      async function loadEvents() {
+        const response = await fetch('/api/events');
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load team events.');
+        renderEvents(data.events || []);
+        const currentSeason = eventForm.elements.season_id.value;
+        eventForm.elements.season_id.replaceChildren(
+          option('', 'Select season'),
+          ...(data.seasons || []).map((season) => option(season.id, `${season.name}${season.active ? ' (active)' : ''}`))
+        );
+        if (currentSeason) eventForm.elements.season_id.value = currentSeason;
+        const currentEvent = obligationForm.elements.scheduled_event_id.value;
+        const eligible = (data.events || []).filter((event) => event.status === 'scheduled' && event.attendance_scope === 'full_team');
+        obligationForm.elements.scheduled_event_id.replaceChildren(
+          option('', eligible.length ? 'Select full-team event' : 'No scheduled full-team events'),
+          ...eligible.map((event) => option(event.id, `${event.name} — ${dateLabel(event.starts_at)}`))
+        );
+        if (currentEvent) obligationForm.elements.scheduled_event_id.value = currentEvent;
+      }
+
+      function renderObligations(items) {
+        obligationList.replaceChildren(...items.map((obligation) => {
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          copy.className = 'item-copy';
+          const player = related(obligation.player);
+          const type = related(obligation.obligation_type);
+          const title = document.createElement('strong');
+          title.textContent = `${player?.name || 'Unknown player'} — ${type?.name || 'Obligation'}`;
+          const detail = document.createElement('span');
+          detail.className = 'meta';
+          detail.textContent = `${dateLabel(obligation.due_at)} · ${obligation.status} · ${obligation.schedule_mode}`;
+          copy.append(title, detail);
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          if (isAdmin && ['planned', 'due'].includes(obligation.status)) {
+            actions.append(
+              actionButton('Edit', () => {
+                obligationForm.elements.obligation_id.value = obligation.id;
+                obligationForm.elements.player_id.value = obligation.player_id;
+                obligationForm.elements.obligation_type_id.value = obligation.obligation_type_id;
+                obligationForm.elements.scheduled_event_id.value = obligation.scheduled_event_id || '';
+                obligationForm.elements.trigger_date.value = obligation.trigger_date || '';
+                obligationForm.elements.note.value = obligation.scheduling_note || '';
+                obligationSubmit.textContent = 'Save obligation';
+                obligationForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }),
+              actionButton('Done', async () => {
+                const note = window.prompt('Optional fulfilment note:') || '';
+                await runAdminAction('/api/obligations', { action: 'fulfill', obligation_id: obligation.id, note }, obligationStatus);
+                await loadObligations();
+              }),
+              actionButton('Move', async () => {
+                const choices = [...eventsById.values()]
+                  .filter((event) => event.status === 'scheduled' && event.attendance_scope === 'full_team')
+                  .map((event) => `${event.id}: ${event.name} (${dateLabel(event.starts_at)})`).join('\n');
+                const eventId = window.prompt(`Enter the new full-team event ID:\n${choices}`);
+                if (!eventId) return;
+                const note = window.prompt('Optional reason for rescheduling:') || '';
+                await runAdminAction('/api/obligations', { action: 'reschedule', obligation_id: obligation.id, scheduled_event_id: eventId, note }, obligationStatus);
+                await loadObligations();
+              }),
+              actionButton('Waive', async () => {
+                const note = window.prompt('Reason for waiving this obligation:');
+                if (!note?.trim()) return;
+                await runAdminAction('/api/obligations', { action: 'waive', obligation_id: obligation.id, note }, obligationStatus);
+                await loadObligations();
+              }),
+              actionButton('Cancel', async () => {
+                const note = window.prompt('Reason for cancelling this obligation:');
+                if (!note?.trim()) return;
+                await runAdminAction('/api/obligations', { action: 'cancel', obligation_id: obligation.id, note }, obligationStatus);
+                await loadObligations();
+              })
+            );
+          } else if (isAdmin) {
+            actions.append(actionButton('Reopen', async () => {
+              await runAdminAction('/api/obligations', { action: 'reopen', obligation_id: obligation.id }, obligationStatus);
+              await loadObligations();
+            }));
+          }
+          item.append(copy, actions);
+          return item;
+        }));
+      }
+
+      async function loadObligations() {
+        const response = await fetch('/api/obligations');
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load obligations.');
+        renderObligations(data.obligations || []);
+        const currentType = obligationForm.elements.obligation_type_id.value;
+        obligationForm.elements.obligation_type_id.replaceChildren(
+          option('', 'Select obligation'),
+          ...(data.obligationTypes || []).map((type) => option(type.id, `${type.name} (${type.item_name})`))
+        );
+        if (currentType) obligationForm.elements.obligation_type_id.value = currentType;
+      }
+
+      function renderObjections(items) {
+        objectionList.replaceChildren(...items.map((objection) => {
+          const item = document.createElement('li');
+          const copy = document.createElement('span');
+          copy.className = 'item-copy';
+          const player = related(objection.player);
+          const fine = related(objection.fine);
+          const title = document.createElement('strong');
+          title.textContent = `${player?.name || 'Unknown player'} — ${fine?.name || `Fine #${objection.fine_id}`}`;
+          const detail = document.createElement('span');
+          detail.className = 'meta';
+          const credit = objection.status === 'accepted' ? ` · €${Number(objection.accepted_credit_amount).toFixed(2)} account credit` : '';
+          detail.textContent = `${objection.reason} · ${objection.status}${credit}`;
+          copy.append(title, detail);
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          if (isAdmin && objection.status === 'pending') {
+            for (const decision of ['accepted', 'rejected']) {
+              actions.append(actionButton(decision === 'accepted' ? 'Accept' : 'Reject', async () => {
+                const note = window.prompt('Optional decision note:') || '';
+                await runAdminAction('/api/objections', { action: 'resolve', objection_id: objection.id, decision, note }, status);
+                await Promise.all([loadObjections(), loadFines()]);
+              }, decision !== 'accepted'));
+            }
+          }
+          item.append(copy, actions);
+          return item;
+        }));
+      }
+
+      async function loadObjections() {
+        const response = await fetch('/api/objections');
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load objections.');
+        renderObjections(data.objections || []);
+      }
+
+      function resetObligationForm() {
+        obligationForm.reset();
+        obligationForm.elements.obligation_id.value = '';
+        obligationForm.elements.trigger_date.value = new Date().toISOString().slice(0, 10);
+        obligationSubmit.textContent = 'Add obligation';
+      }
+
+      fineTypeSelect.addEventListener('change', () => updateFineCalculation());
+      quantityInput.addEventListener('input', () => updateFineCalculation());
+      matchDayInput.addEventListener('change', () => updateFineCalculation());
+      eventForm.elements.attendance_scope.addEventListener('change', () => {
+        eventPlayersField.hidden = eventForm.elements.attendance_scope.value !== 'partial_team';
+      });
+      eventReset.addEventListener('click', resetEventForm);
+      obligationReset.addEventListener('click', resetObligationForm);
+
+      eventForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        try {
+          const body = Object.fromEntries(new FormData(eventForm));
+          body.action = 'save';
+          body.player_ids = [...eventForm.elements.player_ids.selectedOptions].map((item) => item.value);
+          body.starts_at = new Date(body.starts_at).toISOString();
+          body.ends_at = body.ends_at ? new Date(body.ends_at).toISOString() : null;
+          await runAdminAction('/api/events', body, eventStatus);
+          resetEventForm();
+          await Promise.all([loadEvents(), loadObligations()]);
+        } catch (error) {
+          eventStatus.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      obligationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        try {
+          const body = Object.fromEntries(new FormData(obligationForm));
+          body.action = body.obligation_id ? 'update' : 'create';
+          await runAdminAction('/api/obligations', body, obligationStatus);
+          resetObligationForm();
+          await loadObligations();
+        } catch (error) {
+          obligationStatus.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      syncSeedButton.addEventListener('click', async () => {
+        syncSeedButton.disabled = true;
+        try {
+          const data = await runAdminAction('/api/catalog-sync', {}, adminToolsStatus);
+          const counts = data.counts || {};
+          adminToolsStatus.textContent = `Synced ${counts.players || 0} players, ${counts.fineTypes || 0} fine types, ${counts.events || 0} events, ${counts.birthdayObligations || 0} birthday obligations and ${counts.newArrivalObligations || 0} new-arrival obligations.`;
+          await Promise.all([loadPlayers(), loadFineTypes(), loadEvents(), loadObligations()]);
+        } catch (error) {
+          adminToolsStatus.textContent = error.message;
+        } finally {
+          syncSeedButton.disabled = false;
+        }
+      });
+
+      scheduleBirthdaysButton.addEventListener('click', async () => {
+        scheduleBirthdaysButton.disabled = true;
+        try {
+          await runAdminAction('/api/birthday-schedule', {}, adminToolsStatus);
+          await loadObligations();
+        } catch (error) {
+          adminToolsStatus.textContent = error.message;
+        } finally {
+          scheduleBirthdaysButton.disabled = false;
+        }
+      });
 
       authForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -378,6 +1012,7 @@
           authForm.reset();
           authStatus.textContent = '';
           status.textContent = 'Logged in as administrator.';
+          await Promise.all([loadFines(), loadEvents(), loadObligations(), loadObjections()]);
         } catch (error) {
           authStatus.textContent = error.message;
         } finally {
@@ -473,10 +1108,13 @@
         button.disabled = true;
         status.textContent = 'Saving...';
         try {
+          const body = Object.fromEntries(new FormData(form));
+          body.is_match_day = matchDayInput.checked;
+          body.occurred_at = new Date(body.occurred_at).toISOString();
           const response = await authorizedFetch('/api/fines', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.fromEntries(new FormData(form)))
+            body: JSON.stringify(body)
           });
           const data = await readJson(response);
           if (!response.ok) {
@@ -484,6 +1122,12 @@
             throw new Error(data.error || 'Unable to save the fine.');
           }
           form.reset();
+          matchDayInput.disabled = false;
+          matchDayLabel.textContent = 'Match day';
+          noteInput.required = false;
+          noteLabel.textContent = 'Optional note';
+          setCurrentOccurredAt();
+          updateFineCalculation();
           render(data.fines || []);
           status.textContent = 'Saved.';
         } catch (error) {
@@ -514,7 +1158,12 @@
         if (hashError) showLogin(hashError);
         else await validateSession();
 
-        await Promise.all([loadPlayers(), loadFines()]);
+        setCurrentOccurredAt();
+        obligationForm.elements.trigger_date.value = new Date().toISOString().slice(0, 10);
+        await Promise.all([
+          loadPlayers(), loadFineTypes(), loadFines(), loadEvents(),
+          loadObligations(), loadObjections()
+        ]);
       }
 
       initialize().catch((error) => { status.textContent = error.message; });

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "obligationTypes": [
+    {
+      "code": "new-arrival-beer",
+      "name": "Prískočné",
+      "description": "Nový hráč prinesie fľašu alkoholického alebo nealkoholického piva.",
+      "itemName": "bottle of beer",
+      "recurrence": "once",
+      "dailyPenaltyAmount": 0,
+      "active": true
+    },
+    {
+      "code": "birthday-snack",
+      "name": "Narodeninové občerstvenie",
+      "description": "Hráč prinesie občerstvenie na pridelený celotímový tréning alebo zápas.",
+      "itemName": "snack",
+      "recurrence": "annual",
+      "dailyPenaltyAmount": 1,
+      "active": true
+    }
+  ]
+}

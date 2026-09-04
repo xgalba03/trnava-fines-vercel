@@ -14,11 +14,17 @@ logging in with email and password.
    [`database/002-players-and-fine-events.sql`](database/002-players-and-fine-events.sql),
    then run that migration. It preserves existing fine rows, creates the core
    statistics-ready tables, and seeds the version-controlled player names.
-4. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+4. Run [`database/003-fine-calculation-rules.sql`](database/003-fine-calculation-rules.sql)
+   to add fixed/per-unit calculations, match-day rules, event snapshots and the
+   fine catalogue.
+5. Run [`database/004-obligations-events-and-objections.sql`](database/004-obligations-events-and-objections.sql)
+   to add birthdays, full/partial-team events, editable obligations, objection
+   fees and account credits. Run the migrations in numeric order and only once.
+6. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-5. Import this repository into Vercel.
-6. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+7. Import this repository into Vercel.
+8. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -27,7 +33,9 @@ logging in with email and password.
      Auth operations such as setting a password.
    - `ADMIN_EMAIL`: the same email embedded in the database policies.
    - `SITE_URL`: the production HTTPS Vercel URL, without a trailing path.
-7. Redeploy after changing environment variables.
+   - `CRON_SECRET`: a long random server-only secret used by Vercel when it runs
+     the daily obligation penalty job.
+9. Redeploy after changing environment variables.
 
 In **Supabase -> Authentication -> URL Configuration**, set the Site URL and an
 allowed redirect URL to the deployed site. This ensures the one-time password
@@ -68,16 +76,53 @@ Version-controlled starter lists live in [`seed/`](seed/README.md):
 - `players.json` for player names, jersey numbers, and active status.
 - `fine-types.json` for the fine catalogue and default euro amounts.
 - `settings.json` for the late-payment defaults from the design specification.
+- `birthdays.json` for birthday month/day values without unnecessary birth years.
+- `team-events.json` for the editable season calendar and full/partial attendance.
+- `obligation-types.json` for non-cash duties such as beer or birthday snacks.
 
-The files intentionally begin with empty player and fine-type lists because the
-real values have not been supplied yet. Check edits before committing them:
+Check edits before committing them:
 
 ```powershell
 npm run validate:seed
 ```
 
-After migration `002` is applied, the next small implementation step is to read
-players from Supabase in the app and update the Add Fine API to save a
-`player_id`. Supabase remains the runtime source of truth so the future admin UI
-can update data without a code deployment. Fine history stays exclusively in
-the database and is not stored in the seed files.
+The Add Fine form reads players and fine types from Supabase. Its calculated
+amount can be overridden by the administrator; the original calculation and an
+override flag remain in the fine event for later statistics. Supabase remains
+the runtime source of truth, and fine history stays exclusively in the database.
+
+After editing seed JSON and deploying it, log in and select **Sync seed files**.
+The sync updates matching catalogue/calendar records by their stable codes; it
+does not delete database-only records or historical fines. Later admin UI changes
+remain possible without changing JSON. A future sync deliberately reapplies the
+values in the files for matching records.
+
+## Events, birthdays and obligations
+
+Only an event marked `full_team` can carry an automatically scheduled birthday
+obligation. Partial-team practices store their explicit player list but are not
+eligible. For birthdays within the season, the scheduler chooses the first
+eligible event on or after the birthday. An outside-season birthday is placed in
+the largest available calendar gap. Moving an eligible event moves its linked
+obligations; cancelling it or changing it to partial-team moves them to the next
+eligible event when one exists.
+
+The administrator can add, edit and cancel events, and add, fulfil, move, waive,
+cancel or reopen obligations. Automatic schedules never overwrite a manual
+reschedule or a completed/cancelled/waived obligation.
+
+An optional `joinedOn` date in `players.json` creates the one-time new-arrival
+beer obligation at the first later full-team event in that season. Existing
+players without `joinedOn` are not treated as new arrivals.
+
+The daily Vercel job creates one €1 fine for every calendar day after an overdue
+birthday snack remains unfulfilled. Its idempotency key makes retries safe. Mark
+the obligation fulfilled, waived or cancelled to stop future daily fines.
+
+## Objections
+
+Use **Object** next to an ordinary fine. Submission creates the agreed €1 filing
+fee. Accepting the objection voids the original fine and records a €2 negative
+financial adjustment (account credit); it is never represented as a cash payout.
+Rejecting it leaves the original fine and filing fee in place. Historical fine
+snapshots remain unchanged even if a catalogue type is edited later.
