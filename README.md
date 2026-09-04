@@ -108,6 +108,14 @@ minutes late) and produces one fine event. For fixed fines, quantity is the
 number of occurrences and one submission creates that many separate fine events
 with a shared batch identifier.
 
+While logged in, manually entered active fines have an **Edit** action. Each edit
+stores the previous fine values in that row's private metadata for audit. An
+active fine not linked to an objection can instead be **Voided**, which requires a reason. Voiding never
+deletes the database row: administrators continue to see the crossed-out record
+and reason for audit, while public fine history and player balances exclude it.
+Fines linked to an objection and system-created fines cannot be edited directly;
+void and replace them when a correction is needed.
+
 After editing seed JSON and deploying it, log in and select **Sync seed files**.
 The sync updates matching catalogue/calendar records by their stable codes; it
 does not delete database-only records or historical fines. Later admin UI changes

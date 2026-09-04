@@ -18,38 +18,61 @@ function readBoolean(value) {
   return value === true || value === 'true' || value === 'on';
 }
 
+function selectColumns(includeAuditFields = false) {
+  const columns = [
+    'id',
+    'player_id',
+    'fine_type_id',
+    'name',
+    'description',
+    'amount',
+    'occurred_at',
+    'type',
+    'source',
+    'quantity',
+    'unit_name_snapshot',
+    'is_match_day',
+    'multiplier_applied',
+    'calculated_amount',
+    'amount_overridden',
+    'obligation_id',
+    'objection_id',
+    'note',
+    'created_at',
+    'player:players(name)',
+    'fine_type:fine_types(code, name)'
+  ];
+  if (includeAuditFields) columns.push('voided_at', 'void_reason', 'metadata', 'updated_at');
+  return columns.join(', ');
+}
+
+async function readFines(supabase, includeAuditFields = false) {
+  const { data: fines, error } = await supabase
+    .from('fines')
+    .select(selectColumns(includeAuditFields))
+    .order('occurred_at', { ascending: false });
+  if (error) throw error;
+  return fines;
+}
+
 module.exports = async function handler(request, response) {
   try {
     const token = request.headers.authorization?.replace(/^Bearer\s+/i, '');
 
     if (request.method === 'GET') {
-      const supabase = getClient(process.env.SUPABASE_ANON_KEY);
-      const { data: fines, error } = await supabase
-        .from('fines')
-        .select([
-          'id',
-          'player_id',
-          'fine_type_id',
-          'name',
-          'description',
-          'amount',
-          'occurred_at',
-          'type',
-          'quantity',
-          'unit_name_snapshot',
-          'is_match_day',
-          'multiplier_applied',
-          'calculated_amount',
-          'amount_overridden',
-          'obligation_id',
-          'objection_id',
-          'note',
-          'created_at',
-          'player:players(name)',
-          'fine_type:fine_types(code, name)'
-        ].join(', '))
-        .order('occurred_at', { ascending: false });
-      if (error) throw error;
+      let supabase = getClient(process.env.SUPABASE_ANON_KEY);
+      let includeAuditFields = false;
+      if (token) {
+        supabase = getClient(process.env.SUPABASE_ANON_KEY, token);
+        const { data: userData, error: userError } = await supabase.auth.getUser(token);
+        const user = userData?.user;
+        if (userError || !user) return response.status(401).json({ error: 'Your session has expired.' });
+        if (!process.env.ADMIN_EMAIL || user.email?.toLowerCase() !== process.env.ADMIN_EMAIL.toLowerCase()) {
+          return response.status(403).json({ error: 'Only the configured admin can view audit history.' });
+        }
+        includeAuditFields = true;
+      }
+      const fines = await readFines(supabase, includeAuditFields);
       return response.status(200).json({ fines });
     }
 
@@ -64,6 +87,8 @@ module.exports = async function handler(request, response) {
     }
 
     const {
+      action: actionValue,
+      fine_id: fineIdValue,
       player_id: playerIdValue,
       fine_type_id: fineTypeIdValue,
       quantity: quantityValue,
@@ -72,6 +97,74 @@ module.exports = async function handler(request, response) {
       note: noteValue,
       occurred_at: occurredAtValue
     } = request.body || {};
+    const action = String(actionValue || 'create');
+    const fineId = Number(fineIdValue);
+
+    if (action === 'void') {
+      const reason = String(request.body?.reason || '').trim();
+      if (!Number.isSafeInteger(fineId) || fineId <= 0 || !reason) {
+        return response.status(400).json({ error: 'Choose a fine and enter a reason for voiding it.' });
+      }
+      if (reason.length > 500) {
+        return response.status(400).json({ error: 'The void reason cannot exceed 500 characters.' });
+      }
+      const { data: existingFine, error: existingError } = await supabase
+        .from('fines')
+        .select('id, objection_id, voided_at')
+        .eq('id', fineId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (!existingFine) return response.status(404).json({ error: 'Fine not found.' });
+      if (existingFine.voided_at) return response.status(409).json({ error: 'This fine is already voided.' });
+      if (existingFine.objection_id) {
+        return response.status(409).json({ error: 'Use the objection decision to change a fine linked to an objection.' });
+      }
+      const { error: voidError } = await supabase
+        .from('fines')
+        .update({
+          voided_at: new Date().toISOString(),
+          voided_by: user.id,
+          void_reason: reason,
+          updated_by: user.id
+        })
+        .eq('id', fineId)
+        .is('voided_at', null);
+      if (voidError) throw voidError;
+      return response.status(200).json({
+        message: 'Fine voided. The original record was kept.'
+      });
+    }
+
+    if (!['create', 'update'].includes(action)) {
+      return response.status(400).json({ error: 'Unsupported fine action.' });
+    }
+    if (action === 'update' && (!Number.isSafeInteger(fineId) || fineId <= 0)) {
+      return response.status(400).json({ error: 'Choose a fine to edit.' });
+    }
+
+    let existingFine = null;
+    if (action === 'update') {
+      const { data, error: existingError } = await supabase
+        .from('fines')
+        .select([
+          'id', 'type', 'source', 'objection_id', 'voided_at', 'player_id',
+          'fine_type_id', 'name', 'description', 'amount', 'occurred_at',
+          'quantity', 'is_match_day', 'note', 'calculated_amount',
+          'amount_overridden', 'metadata'
+        ].join(', '))
+        .eq('id', fineId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      existingFine = data;
+      if (!existingFine) return response.status(404).json({ error: 'Fine not found.' });
+      if (existingFine.voided_at) return response.status(409).json({ error: 'A voided fine cannot be edited.' });
+      if (existingFine.type !== 'normal' || existingFine.source !== 'manual') {
+        return response.status(400).json({ error: 'Only manually entered fines can be edited.' });
+      }
+      if (existingFine.objection_id) {
+        return response.status(409).json({ error: 'A fine linked to an objection cannot be edited.' });
+      }
+    }
     const playerId = Number(playerIdValue);
     const fineTypeId = Number(fineTypeIdValue);
     const isMatchDay = readBoolean(isMatchDayValue);
@@ -138,6 +231,11 @@ module.exports = async function handler(request, response) {
           : 'Enter a whole-number quantity from 1 to 100.'
       });
     }
+    if (action === 'update' && !isPerUnit && requestedQuantity !== 1) {
+      return response.status(400).json({
+        error: 'A fixed fine is stored as one event. Edit this event with quantity 1, or add more separate fines.'
+      });
+    }
 
     const defaultAmount = Number(fineType.default_amount);
     const matchDayMultiplier = Number(fineType.match_day_multiplier);
@@ -164,7 +262,6 @@ module.exports = async function handler(request, response) {
     }
 
     const fineValues = {
-        user_id: user.id,
         player_id: playerId,
         fine_type_id: fineTypeId,
         name: fineType.name,
@@ -188,6 +285,44 @@ module.exports = async function handler(request, response) {
         type: 'normal',
         source: 'manual'
       };
+
+    if (action === 'update') {
+      const currentMetadata = existingFine.metadata && typeof existingFine.metadata === 'object'
+        ? existingFine.metadata
+        : {};
+      const editHistory = Array.isArray(currentMetadata.edit_history)
+        ? currentMetadata.edit_history
+        : [];
+      const metadata = {
+        ...currentMetadata,
+        edit_history: [...editHistory, {
+          edited_at: new Date().toISOString(),
+          edited_by: user.id,
+          previous: {
+            player_id: existingFine.player_id,
+            fine_type_id: existingFine.fine_type_id,
+            name: existingFine.name,
+            description: existingFine.description,
+            amount: existingFine.amount,
+            occurred_at: existingFine.occurred_at,
+            quantity: existingFine.quantity,
+            is_match_day: existingFine.is_match_day,
+            note: existingFine.note,
+            calculated_amount: existingFine.calculated_amount,
+            amount_overridden: existingFine.amount_overridden
+          }
+        }]
+      };
+      const { error: updateError } = await supabase
+        .from('fines')
+        .update({ ...fineValues, metadata, updated_by: user.id })
+        .eq('id', fineId)
+        .is('voided_at', null);
+      if (updateError) throw updateError;
+      return response.status(200).json({ message: 'Fine updated.' });
+    }
+
+    fineValues.user_id = user.id;
     let insertValues = fineValues;
     if (batchCount > 1) {
       const batchId = randomUUID();
@@ -210,7 +345,7 @@ module.exports = async function handler(request, response) {
       throw insertError;
     }
 
-    return module.exports({ method: 'GET', headers: {} }, response);
+    return response.status(200).json({ message: 'Fine added.' });
   } catch (error) {
     console.error(error);
     return response.status(500).json({ error: error.message || 'Database request failed.' });

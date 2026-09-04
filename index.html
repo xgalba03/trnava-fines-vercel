@@ -231,6 +231,14 @@
         font-size: 0.82rem;
       }
 
+      .voided-item {
+        opacity: 0.62;
+      }
+
+      .voided-item strong {
+        text-decoration: line-through;
+      }
+
       .form-field {
         display: grid;
         gap: 0.25rem;
@@ -526,9 +534,10 @@
           <p id="auth-status" role="status"></p>
         </section>
         <div id="fine-entry" hidden>
-          <h3>Add a fine</h3>
-          <p>Add a fine below. It is saved to the database.</p>
+          <h3 id="fine-entry-heading">Add a fine</h3>
+          <p>Add or correct a fine below. Every voided record remains in the admin audit history.</p>
           <form id="fine-form">
+            <input name="fine_id" type="hidden" />
             <label class="form-field">
               <span>Player</span>
               <select name="player_id" required disabled>
@@ -562,7 +571,10 @@
               <input name="note" maxlength="500" placeholder="Additional context" />
             </label>
             <p id="calculation" role="status"></p>
-            <button class="full-width" type="submit">Add fine</button>
+            <div class="actions full-width">
+              <button id="fine-reset" class="secondary" type="button">Cancel</button>
+              <button id="fine-submit" type="submit">Add fine</button>
+            </div>
           </form>
         </div>
         <div id="payment-entry" hidden>
@@ -783,6 +795,9 @@
       const passwordForm = document.querySelector('#password-form');
       const passwordStatus = document.querySelector('#password-status');
       const form = document.querySelector('#fine-form');
+      const fineEntryHeading = document.querySelector('#fine-entry-heading');
+      const fineReset = document.querySelector('#fine-reset');
+      const fineSubmit = document.querySelector('#fine-submit');
       const playerSelect = form.elements.player_id;
       const fineTypeSelect = form.elements.fine_type_id;
       const matchDayInput = form.elements.is_match_day;
@@ -1057,6 +1072,19 @@
         occurredAtInput.value = localTime.toISOString().slice(0, 16);
       }
 
+      function resetFineForm() {
+        form.reset();
+        form.elements.fine_id.value = '';
+        fineEntryHeading.textContent = 'Add a fine';
+        fineSubmit.textContent = 'Add fine';
+        matchDayInput.disabled = false;
+        matchDayLabel.textContent = 'Match day';
+        noteInput.required = false;
+        noteLabel.textContent = 'Optional note';
+        setCurrentOccurredAt();
+        updateFineCalculation();
+      }
+
       function setCurrentPaymentValues() {
         const now = new Date();
         const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -1149,6 +1177,7 @@
       function render(items) {
         fines.replaceChildren(...items.map((fine) => {
           const item = document.createElement('li');
+          if (fine.voided_at) item.className = 'voided-item';
           const description = document.createElement('span');
           const amount = document.createElement('strong');
           const relatedPlayer = Array.isArray(fine.player) ? fine.player[0] : fine.player;
@@ -1160,13 +1189,58 @@
             ? ` ×${Number(fine.multiplier_applied)} match day`
             : '';
           const overrideText = fine.amount_overridden ? ' (adjusted)' : '';
+          const editCount = Array.isArray(fine.metadata?.edit_history)
+            ? fine.metadata.edit_history.length
+            : 0;
+          const editText = editCount ? ` (edited ${editCount}×)` : '';
+          const voidText = fine.voided_at
+            ? ` — voided${fine.void_reason ? `: ${fine.void_reason}` : ''}`
+            : '';
           description.textContent = `${relatedPlayer?.name ? `${relatedPlayer.name}: ` : ''}`
-            + `${fineName}${quantityText}${multiplierText}${overrideText}`;
+            + `${fineName}${quantityText}${multiplierText}${overrideText}${editText}${voidText}`;
           amount.textContent = `€${Number(fine.amount).toFixed(2)}`;
           const right = document.createElement('div');
           right.className = 'actions';
           right.append(amount);
-          if (isAdmin && fine.player_id && fine.type === 'normal' && !fine.objection_id) {
+          if (isAdmin && editCount) {
+            right.append(actionButton('History', async () => {
+              const history = fine.metadata.edit_history.map((entry, index) => {
+                const previous = entry.previous || {};
+                const note = previous.note ? `; note: ${previous.note}` : '';
+                return `${index + 1}. ${dateLabel(entry.edited_at)} — before edit: `
+                  + `€${Number(previous.amount || 0).toFixed(2)}, quantity ${Number(previous.quantity || 1)}, `
+                  + `occurred ${dateLabel(previous.occurred_at)}${note}`;
+              });
+              window.alert(history.join('\n'));
+            }));
+          }
+          if (isAdmin && !fine.voided_at && fine.type === 'normal' && fine.source === 'manual' && !fine.objection_id) {
+            right.append(actionButton('Edit', async () => {
+              form.elements.fine_id.value = fine.id;
+              playerSelect.value = String(fine.player_id);
+              fineTypeSelect.value = String(fine.fine_type_id);
+              quantityInput.value = String(Number(fine.quantity) || 1);
+              matchDayInput.checked = Boolean(fine.is_match_day);
+              updateFineCalculation(false);
+              amountInput.value = Number(fine.amount).toFixed(2);
+              occurredAtInput.value = localInputValue(fine.occurred_at);
+              noteInput.value = fine.note || '';
+              fineEntryHeading.textContent = 'Edit fine';
+              fineSubmit.textContent = 'Save changes';
+              openAdminAt(fineEntry);
+            }));
+          }
+          if (isAdmin && !fine.voided_at && !fine.objection_id) {
+            right.append(actionButton('Void', async () => {
+              const reason = window.prompt('Why is this fine being voided? The record will be kept for audit.');
+              if (!reason?.trim()) return;
+              await runAdminAction('/api/fines', {
+                action: 'void', fine_id: fine.id, reason
+              }, status);
+              await Promise.all([loadFines(), loadPayments(), loadObjections()]);
+            }));
+          }
+          if (isAdmin && !fine.voided_at && fine.player_id && fine.type === 'normal' && !fine.objection_id) {
             right.append(actionButton('Object', async () => {
               const reason = window.prompt('Reason for the objection (€1 filing fee):');
               if (!reason?.trim()) return;
@@ -1182,7 +1256,9 @@
       }
 
       async function loadFines() {
-        const response = await fetch('/api/fines');
+        const response = isAdmin
+          ? await authorizedFetch('/api/fines', {})
+          : await fetch('/api/fines');
         const data = await readJson(response);
         if (!response.ok) throw new Error(data.error || 'Unable to load fines.');
         render(data.fines || []);
@@ -1853,7 +1929,11 @@
         authForm.elements.email.focus();
       });
 
-      addFineButton.addEventListener('click', () => openAdminAt(fineEntry));
+      addFineButton.addEventListener('click', () => {
+        resetFineForm();
+        openAdminAt(fineEntry);
+      });
+      fineReset.addEventListener('click', resetFineForm);
       adminMenuButton.addEventListener('click', () => openAdminAt(adminDialogContent));
       closeLogin.addEventListener('click', () => loginDialog.close());
       closeAdmin.addEventListener('click', () => adminDialog.close());
@@ -1884,11 +1964,12 @@
 
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const button = form.querySelector('button');
+        const button = event.submitter;
         button.disabled = true;
         status.textContent = 'Saving...';
         try {
           const body = Object.fromEntries(new FormData(form));
+          body.action = body.fine_id ? 'update' : 'create';
           body.is_match_day = matchDayInput.checked;
           body.occurred_at = new Date(body.occurred_at).toISOString();
           const response = await authorizedFetch('/api/fines', {
@@ -1901,16 +1982,9 @@
             if (response.status === 401 || response.status === 403) showLogin(data.error);
             throw new Error(data.error || 'Unable to save the fine.');
           }
-          form.reset();
-          matchDayInput.disabled = false;
-          matchDayLabel.textContent = 'Match day';
-          noteInput.required = false;
-          noteLabel.textContent = 'Optional note';
-          setCurrentOccurredAt();
-          updateFineCalculation();
-          render(data.fines || []);
-          await loadPayments();
-          status.textContent = 'Saved.';
+          resetFineForm();
+          await Promise.all([loadFines(), loadPayments()]);
+          status.textContent = data.message || 'Saved.';
         } catch (error) {
           status.textContent = error.message;
         } finally {

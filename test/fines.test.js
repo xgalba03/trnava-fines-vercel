@@ -48,6 +48,7 @@ test('public fines can be read with the anon key and no login or service key', a
       amount: 2,
       occurred_at: '2026-09-04T10:00:00Z',
       type: 'normal',
+      source: 'manual',
       quantity: 2,
       unit_name_snapshot: 'minute',
       is_match_day: false,
@@ -81,6 +82,7 @@ test('public fines can be read with the anon key and no login or service key', a
                 'amount',
                 'occurred_at',
                 'type',
+                'source',
                 'quantity',
                 'unit_name_snapshot',
                 'is_match_day',
@@ -317,4 +319,162 @@ test('a fixed fine quantity creates separate fine events in one batch', async ()
   assert.deepEqual(insertedFines.map((fine) => fine.metadata.batch_index), [1, 2, 3]);
   assert.equal(insertedFines[0].metadata.batch_size, 3);
   assert.equal(insertedFines[0].metadata.batch_id, insertedFines[2].metadata.batch_id);
+});
+
+test('an admin can edit an active manually entered fine', async () => {
+  let updatedFine;
+
+  clientFactory = () => ({
+    auth: {
+      getUser: async () => ({
+        data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+        error: null
+      })
+    },
+    from(table) {
+      if (table === 'players') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({ data: { id: 7, active: true }, error: null }) })
+          })
+        };
+      }
+      if (table === 'fine_types') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: {
+                  id: 3,
+                  code: 'late-to-training',
+                  name: 'Late to training',
+                  description: 'Player arrived late.',
+                  default_amount: 1,
+                  category: 'Training',
+                  calculation_mode: 'per_unit',
+                  unit_name: 'minute',
+                  match_day_only: false,
+                  double_on_match_day: true,
+                  match_day_multiplier: 2,
+                  active: true
+                },
+                error: null
+              })
+            })
+          })
+        };
+      }
+      assert.equal(table, 'fines');
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: {
+                id: 11,
+                type: 'normal',
+                source: 'manual',
+                objection_id: null,
+                voided_at: null,
+                player_id: 7,
+                fine_type_id: 3,
+                name: 'Late to training',
+                amount: 6,
+                quantity: 3,
+                occurred_at: '2026-09-04T09:55:00Z',
+                metadata: { imported: true }
+              },
+              error: null
+            })
+          })
+        }),
+        update(values) {
+          updatedFine = values;
+          return {
+            eq: (_column, id) => {
+              assert.equal(id, 11);
+              return { is: async () => ({ error: null }) };
+            }
+          };
+        }
+      };
+    }
+  });
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: {
+      action: 'update',
+      fine_id: '11',
+      player_id: '7',
+      fine_type_id: '3',
+      quantity: '4',
+      is_match_day: true,
+      amount: '7.50',
+      note: 'Corrected from score sheet',
+      occurred_at: '2026-09-04T10:00:00Z'
+    }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.message, 'Fine updated.');
+  assert.equal(updatedFine.user_id, undefined);
+  assert.equal(updatedFine.updated_by, 'admin-id');
+  assert.equal(updatedFine.player_id, 7);
+  assert.equal(updatedFine.quantity, 4);
+  assert.equal(updatedFine.calculated_amount, 8);
+  assert.equal(updatedFine.amount, 7.5);
+  assert.equal(updatedFine.amount_overridden, true);
+  assert.equal(updatedFine.metadata.imported, true);
+  assert.equal(updatedFine.metadata.edit_history.length, 1);
+  assert.equal(updatedFine.metadata.edit_history[0].edited_by, 'admin-id');
+  assert.equal(updatedFine.metadata.edit_history[0].previous.amount, 6);
+  assert.equal(updatedFine.metadata.edit_history[0].previous.quantity, 3);
+});
+
+test('voiding a fine keeps it and records who voided it and why', async () => {
+  let voidUpdate;
+
+  clientFactory = () => ({
+    auth: {
+      getUser: async () => ({
+        data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+        error: null
+      })
+    },
+    from(table) {
+      assert.equal(table, 'fines');
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: { id: 12, voided_at: null }, error: null })
+          })
+        }),
+        update(values) {
+          voidUpdate = values;
+          return {
+            eq: (_column, id) => {
+              assert.equal(id, 12);
+              return { is: async () => ({ error: null }) };
+            }
+          };
+        }
+      };
+    }
+  });
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: { action: 'void', fine_id: '12', reason: 'Entered for the wrong player' }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.message, 'Fine voided. The original record was kept.');
+  assert.equal(voidUpdate.voided_by, 'admin-id');
+  assert.equal(voidUpdate.updated_by, 'admin-id');
+  assert.equal(voidUpdate.void_reason, 'Entered for the wrong player');
+  assert.match(voidUpdate.voided_at, /^\d{4}-\d{2}-\d{2}T/);
 });
