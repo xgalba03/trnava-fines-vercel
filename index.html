@@ -94,7 +94,12 @@
         grid-template-columns: 1fr 8rem auto;
       }
 
+      #fine-form {
+        grid-template-columns: 10rem 1fr 8rem auto;
+      }
+
       input,
+      select,
       button {
         box-sizing: border-box;
         min-height: 2.5rem;
@@ -146,7 +151,8 @@
           grid-template-columns: 1fr;
         }
 
-        form {
+        form,
+        #fine-form {
           grid-template-columns: 1fr;
         }
       }
@@ -175,6 +181,9 @@
         <div id="fine-entry" hidden>
           <p>Add a fine below. It is saved to the database.</p>
           <form id="fine-form">
+            <select name="player_id" aria-label="Player" required disabled>
+              <option value="">Loading players...</option>
+            </select>
             <input name="description" placeholder="What happened?" required maxlength="120" />
             <input name="amount" type="number" min="0.01" step="0.01" placeholder="Amount" required />
             <button type="submit">Add fine</button>
@@ -206,6 +215,7 @@
       const passwordForm = document.querySelector('#password-form');
       const passwordStatus = document.querySelector('#password-status');
       const form = document.querySelector('#fine-form');
+      const playerSelect = form.elements.player_id;
       const status = document.querySelector('#status');
       const fines = document.querySelector('#fines');
 
@@ -310,7 +320,10 @@
           const item = document.createElement('li');
           const description = document.createElement('span');
           const amount = document.createElement('strong');
-          description.textContent = fine.description;
+          const relatedPlayer = Array.isArray(fine.player) ? fine.player[0] : fine.player;
+          description.textContent = relatedPlayer?.name
+            ? `${relatedPlayer.name}: ${fine.description}`
+            : fine.description;
           amount.textContent = Number(fine.amount).toFixed(2);
           item.append(description, amount);
           return item;
@@ -322,6 +335,27 @@
         const data = await readJson(response);
         if (!response.ok) throw new Error(data.error || 'Unable to load fines.');
         render(data.fines || []);
+      }
+
+      async function loadPlayers() {
+        const response = await fetch('/api/players');
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load players.');
+
+        const options = (data.players || []).map((player) => {
+          const option = document.createElement('option');
+          option.value = String(player.id);
+          option.textContent = player.jersey_number === null
+            ? player.name
+            : `${player.name} #${player.jersey_number}`;
+          return option;
+        });
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = options.length ? 'Select player' : 'No active players';
+        playerSelect.replaceChildren(placeholder, ...options);
+        playerSelect.disabled = options.length === 0;
       }
 
       authForm.addEventListener('submit', async (event) => {
@@ -480,7 +514,7 @@
         if (hashError) showLogin(hashError);
         else await validateSession();
 
-        await loadFines();
+        await Promise.all([loadPlayers(), loadFines()]);
       }
 
       initialize().catch((error) => { status.textContent = error.message; });

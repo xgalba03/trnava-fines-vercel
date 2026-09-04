@@ -19,6 +19,7 @@ Module._load = originalLoad;
 
 process.env.SUPABASE_URL = 'https://example.supabase.co';
 process.env.SUPABASE_ANON_KEY = 'anon-key';
+process.env.ADMIN_EMAIL = 'admin@example.com';
 delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function createResponse() {
@@ -38,7 +39,15 @@ function createResponse() {
 
 test('public fines can be read with the anon key and no login or service key', async () => {
   const expectedFines = [
-    { id: 1, description: 'Late to training', amount: 2, created_at: '2026-09-04T10:00:00Z' }
+    {
+      id: 1,
+      player_id: 7,
+      description: 'Late to training',
+      amount: 2,
+      occurred_at: '2026-09-04T10:00:00Z',
+      created_at: '2026-09-04T10:00:00Z',
+      player: { name: 'Alex' }
+    }
   ];
 
   clientFactory = (url, key, options) => {
@@ -50,10 +59,13 @@ test('public fines can be read with the anon key and no login or service key', a
         assert.equal(table, 'fines');
         return {
           select(columns) {
-            assert.equal(columns, 'id, description, amount, created_at');
+            assert.equal(
+              columns,
+              'id, player_id, description, amount, occurred_at, created_at, player:players(name)'
+            );
             return {
               order(column, order) {
-                assert.equal(column, 'created_at');
+                assert.equal(column, 'occurred_at');
                 assert.deepEqual(order, { ascending: false });
                 return Promise.resolve({ data: expectedFines, error: null });
               }
@@ -69,4 +81,75 @@ test('public fines can be read with the anon key and no login or service key', a
 
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.body, { fines: expectedFines });
+});
+
+test('an admin fine records the selected active player', async () => {
+  let insertedFine;
+  const returnedFines = [];
+
+  clientFactory = (_url, key, options) => {
+    if (options?.global?.headers?.Authorization === 'Bearer access') {
+      return {
+        auth: {
+          getUser: async () => ({
+            data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from(table) {
+          if (table === 'players') {
+            return {
+              select() {
+                return {
+                  eq() {
+                    return {
+                      maybeSingle: async () => ({ data: { id: 7, active: true }, error: null })
+                    };
+                  }
+                };
+              }
+            };
+          }
+
+          assert.equal(table, 'fines');
+          return {
+            insert(value) {
+              insertedFine = value;
+              return Promise.resolve({ error: null });
+            }
+          };
+        }
+      };
+    }
+
+    assert.equal(key, 'anon-key');
+    return {
+      from(table) {
+        assert.equal(table, 'fines');
+        return {
+          select() {
+            return {
+              order: async () => ({ data: returnedFines, error: null })
+            };
+          }
+        };
+      }
+    };
+  };
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: { player_id: '7', description: 'Late to training', amount: '2.50' }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(insertedFine.user_id, 'admin-id');
+  assert.equal(insertedFine.player_id, 7);
+  assert.equal(insertedFine.description, 'Late to training');
+  assert.equal(insertedFine.amount, 2.5);
+  assert.equal(insertedFine.type, 'normal');
+  assert.equal(insertedFine.source, 'manual');
+  assert.match(insertedFine.occurred_at, /^\d{4}-\d{2}-\d{2}T/);
 });

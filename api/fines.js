@@ -17,8 +17,8 @@ module.exports = async function handler(request, response) {
       const supabase = getClient(process.env.SUPABASE_ANON_KEY);
       const { data: fines, error } = await supabase
         .from('fines')
-        .select('id, description, amount, created_at')
-        .order('created_at', { ascending: false });
+        .select('id, player_id, description, amount, occurred_at, created_at, player:players(name)')
+        .order('occurred_at', { ascending: false });
       if (error) throw error;
       return response.status(200).json({ fines });
     }
@@ -33,19 +33,42 @@ module.exports = async function handler(request, response) {
       return response.status(403).json({ error: 'Only the configured admin can add fines.' });
     }
 
-    const { description, amount } = request.body || {};
+    const { player_id: playerIdValue, description, amount } = request.body || {};
+    const playerId = Number(playerIdValue);
     const cleanDescription = String(description || '').trim();
     const numericAmount = Number(amount);
+    if (!Number.isSafeInteger(playerId) || playerId <= 0) {
+      return response.status(400).json({ error: 'Select an active player.' });
+    }
     if (!cleanDescription || !Number.isFinite(numericAmount) || numericAmount <= 0) {
       return response.status(400).json({ error: 'Enter a description and a positive amount.' });
     }
 
+    const { data: player, error: playerError } = await supabase
+      .from('players')
+      .select('id, active')
+      .eq('id', playerId)
+      .maybeSingle();
+    if (playerError) throw playerError;
+    if (!player?.active) {
+      return response.status(400).json({ error: 'Select an active player.' });
+    }
+
     const { error: insertError } = await supabase
       .from('fines')
-      .insert({ user_id: user.id, description: cleanDescription, amount: numericAmount });
+      .insert({
+        user_id: user.id,
+        player_id: playerId,
+        name: cleanDescription,
+        description: cleanDescription,
+        amount: numericAmount,
+        occurred_at: new Date().toISOString(),
+        type: 'normal',
+        source: 'manual'
+      });
     if (insertError) {
       if (insertError.code === '42501') {
-        throw new Error('Database RLS is not configured for authenticated inserts. Run repair-rls.sql in Supabase.');
+        throw new Error('Database permissions are not configured for player fines. Run database/002-players-and-fine-events.sql in Supabase.');
       }
       throw insertError;
     }
