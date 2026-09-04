@@ -30,7 +30,7 @@ function roundMoney(value) {
 }
 
 function buildLatePaymentRows({
-  periods, players, fines, adjustments, payments, fineType, amount, today
+  periods, players, fines, adjustments, payments, exceptions, fineType, amount, today
 }) {
   const rows = [];
   const existingKeys = new Set((fines || []).map((fine) => fine.idempotency_key).filter(Boolean));
@@ -38,10 +38,21 @@ function buildLatePaymentRows({
 
   for (const period of periods || []) {
     const periodMonth = String(period.period_month).slice(0, 7);
-    const chargeDates = dateRangeAfter(period.payment_deadline, today);
-    if (!chargeDates.length) continue;
 
     for (const player of players || []) {
+      const exception = (exceptions || []).find((item) => (
+        item.active
+        && Number(item.player_id) === Number(player.id)
+        && Number(item.monthly_period_id) === Number(period.id)
+      ));
+      if (exception?.penalties_waived) continue;
+      const effectiveDeadline = exception?.custom_deadline || period.payment_deadline;
+      const chargeDates = dateRangeAfter(effectiveDeadline, today)
+        .filter((date) => (
+          !exception?.penalties_paused_until || date > exception.penalties_paused_until
+        ));
+      if (!chargeDates.length) continue;
+
       const playerFines = (fines || []).filter((fine) => (
         Number(fine.player_id) === Number(player.id) && belongsToPeriod(fine, period)
       ));
@@ -127,7 +138,10 @@ async function processLatePayments(supabase, today, settings) {
     throw new Error('The daily late-payment fine setting must be positive.');
   }
 
-  const [periodsResult, playersResult, finesResult, adjustmentsResult, paymentsResult, fineTypeResult] = await Promise.all([
+  const [
+    periodsResult, playersResult, finesResult, adjustmentsResult,
+    paymentsResult, exceptionsResult, fineTypeResult
+  ] = await Promise.all([
     supabase.from('monthly_periods')
       .select('id, season_id, period_month, payment_deadline')
       .not('payment_deadline', 'is', null)
@@ -141,6 +155,9 @@ async function processLatePayments(supabase, today, settings) {
     supabase.from('payments')
       .select('player_id, period_month, amount, paid_at')
       .is('reversed_at', null),
+    supabase.from('settlement_exceptions')
+      .select('player_id, monthly_period_id, custom_deadline, penalties_paused_until, penalties_waived, active')
+      .eq('active', true),
     supabase.from('fine_types')
       .select('id, name, description, category')
       .eq('code', 'late-payment')
@@ -148,7 +165,8 @@ async function processLatePayments(supabase, today, settings) {
       .single()
   ]);
   const error = periodsResult.error || playersResult.error || finesResult.error
-    || adjustmentsResult.error || paymentsResult.error || fineTypeResult.error;
+    || adjustmentsResult.error || paymentsResult.error || exceptionsResult.error
+    || fineTypeResult.error;
   if (error) throw error;
 
   const rows = buildLatePaymentRows({
@@ -157,6 +175,7 @@ async function processLatePayments(supabase, today, settings) {
     fines: finesResult.data,
     adjustments: adjustmentsResult.data,
     payments: paymentsResult.data,
+    exceptions: exceptionsResult.data,
     fineType: fineTypeResult.data,
     amount,
     today

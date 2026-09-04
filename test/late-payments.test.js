@@ -136,3 +136,66 @@ test('a payment on an overdue day does not erase penalties for earlier missed da
     'late-payment:9:7:2026-10-22'
   ]);
 });
+
+test('custom deadlines, pauses, and waivers change automatic penalty dates', () => {
+  const common = {
+    periods: [period],
+    players: [{ id: 7 }],
+    fines: [{
+      user_id: 'admin-id',
+      player_id: 7,
+      monthly_period_id: null,
+      amount: 16,
+      occurred_at: '2026-09-10T10:00:00Z',
+      type: 'normal',
+      idempotency_key: null
+    }],
+    adjustments: [],
+    payments: [],
+    fineType,
+    amount: 1,
+    today: '2026-10-23'
+  };
+
+  const extended = buildLatePaymentRows({
+    ...common,
+    exceptions: [{
+      active: true,
+      player_id: 7,
+      monthly_period_id: 9,
+      custom_deadline: '2026-10-21',
+      penalties_paused_until: null,
+      penalties_waived: false
+    }]
+  });
+  assert.deepEqual(extended.map((row) => row.occurred_at), [
+    '2026-10-22T12:00:00Z',
+    '2026-10-23T12:00:00Z'
+  ]);
+
+  const paused = buildLatePaymentRows({
+    ...common,
+    exceptions: [{
+      active: true,
+      player_id: 7,
+      monthly_period_id: 9,
+      custom_deadline: null,
+      penalties_paused_until: '2026-10-22',
+      penalties_waived: false
+    }]
+  });
+  assert.deepEqual(paused.map((row) => row.occurred_at), ['2026-10-23T12:00:00Z']);
+
+  const waived = buildLatePaymentRows({
+    ...common,
+    exceptions: [{
+      active: true,
+      player_id: 7,
+      monthly_period_id: 9,
+      custom_deadline: null,
+      penalties_paused_until: null,
+      penalties_waived: true
+    }]
+  });
+  assert.deepEqual(waived, []);
+});

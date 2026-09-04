@@ -72,19 +72,35 @@ function findSeason(seasons, period) {
   )) || null;
 }
 
-function addSettlementStatuses(balances, monthlyPeriod, today = localDateString()) {
+function addSettlementStatuses(balances, monthlyPeriod, exceptions = [], today = localDateString()) {
   return balances.map((balance) => {
+    const exception = exceptions.find((item) => (
+      item.active && Number(item.player_id) === Number(balance.player_id)
+    )) || null;
     const hasActivity = balance.opening_balance !== 0 || balance.charges !== 0
       || balance.adjustments !== 0 || balance.paid !== 0;
+    const effectiveDeadline = exception?.custom_deadline || monthlyPeriod?.payment_deadline || null;
     let settlementStatus = 'due';
     if (!hasActivity) settlementStatus = 'no_balance';
     else if (balance.balance < 0) settlementStatus = 'credit';
     else if (balance.balance === 0) settlementStatus = 'settled';
-    else if (monthlyPeriod?.payment_deadline && today > monthlyPeriod.payment_deadline) {
+    else if (exception?.penalties_waived) settlementStatus = 'waived';
+    else if (exception?.penalties_paused_until && today <= exception.penalties_paused_until) {
+      settlementStatus = 'paused';
+    } else if (effectiveDeadline && today > effectiveDeadline) {
       settlementStatus = 'overdue';
     }
-    return { ...balance, settlement_status: settlementStatus };
+    return {
+      ...balance,
+      settlement_status: settlementStatus,
+      effective_deadline: effectiveDeadline,
+      exception
+    };
   });
+}
+
+function readBoolean(value) {
+  return value === true || value === 'true' || value === 'on';
 }
 
 function buildBalances(players, fines, adjustments, payments, period) {
@@ -163,7 +179,7 @@ async function loadSnapshot(supabase, period) {
   const periodDate = `${period}-01`;
   const [
     playersResult, finesResult, adjustmentsResult, paymentsResult,
-    seasonsResult, monthlyPeriodsResult
+    seasonsResult, monthlyPeriodsResult, exceptionsResult
   ] = await Promise.all([
     supabase.from('players').select('id, name, active').eq('active', true).order('name'),
     supabase.from('fines')
@@ -177,10 +193,14 @@ async function loadSnapshot(supabase, period) {
     supabase.from('seasons').select('id, start_date, end_date, active').order('active', { ascending: false }),
     supabase.from('monthly_periods')
       .select('id, season_id, period_month, club_payment_date, payment_deadline')
-      .eq('period_month', periodDate)
+      .eq('period_month', periodDate),
+    supabase.from('settlement_exceptions')
+      .select('id, player_id, monthly_period_id, custom_deadline, penalties_paused_until, penalties_waived, active')
+      .eq('active', true)
   ]);
   const error = playersResult.error || finesResult.error || adjustmentsResult.error
-    || paymentsResult.error || seasonsResult.error || monthlyPeriodsResult.error;
+    || paymentsResult.error || seasonsResult.error || monthlyPeriodsResult.error
+    || exceptionsResult.error;
   if (error) throw error;
 
   const season = findSeason(seasonsResult.data, period);
@@ -204,7 +224,13 @@ async function loadSnapshot(supabase, period) {
   return {
     period,
     monthly_period: monthlyPeriod,
-    balances: addSettlementStatuses(balances, monthlyPeriod),
+    balances: addSettlementStatuses(
+      balances,
+      monthlyPeriod,
+      (exceptionsResult.data || []).filter((item) => (
+        Number(item.monthly_period_id) === Number(storedPeriod?.id)
+      ))
+    ),
     payments: (paymentsResult.data || []).filter((payment) => (
       String(payment.period_month || '').slice(0, 7) === period
     ))
@@ -264,6 +290,91 @@ module.exports = async function handler(request, response) {
           days_after_club_payment: deadlineDays
         }
       });
+    }
+
+    if (body.action === 'configure_exception' || body.action === 'clear_exception') {
+      const playerId = Number(body.player_id);
+      const period = parsePeriod(body.period_month);
+      if (!Number.isSafeInteger(playerId) || playerId <= 0 || !period) {
+        return response.status(400).json({ error: 'Choose a player and settlement month.' });
+      }
+      const { data: player, error: playerError } = await auth.supabase
+        .from('players')
+        .select('id, active')
+        .eq('id', playerId)
+        .maybeSingle();
+      if (playerError) throw playerError;
+      if (!player?.active) return response.status(400).json({ error: 'Select an active player.' });
+
+      const links = await findOrCreateMonthlyPeriod(auth.supabase, period);
+      if (!links.monthlyPeriodId) {
+        return response.status(400).json({ error: 'No matching season is available for this month.' });
+      }
+      const { data: monthlyPeriod, error: monthlyPeriodError } = await auth.supabase
+        .from('monthly_periods')
+        .select('id, payment_deadline')
+        .eq('id', links.monthlyPeriodId)
+        .maybeSingle();
+      if (monthlyPeriodError) throw monthlyPeriodError;
+      if (!monthlyPeriod?.payment_deadline) {
+        return response.status(400).json({ error: 'Set the monthly payment deadline before adding an exception.' });
+      }
+
+      if (body.action === 'clear_exception') {
+        const { error: clearError } = await auth.supabase
+          .from('settlement_exceptions')
+          .update({ active: false, updated_by: auth.user.id })
+          .eq('player_id', playerId)
+          .eq('monthly_period_id', links.monthlyPeriodId);
+        if (clearError) throw clearError;
+        return response.status(200).json({ message: 'Settlement exception cleared.' });
+      }
+
+      const customDeadline = body.custom_deadline ? parseDate(body.custom_deadline) : null;
+      const pausedUntil = body.penalties_paused_until
+        ? parseDate(body.penalties_paused_until)
+        : null;
+      const penaltiesWaived = readBoolean(body.penalties_waived);
+      const reason = String(body.reason || '').trim();
+      if ((body.custom_deadline && !customDeadline)
+        || (body.penalties_paused_until && !pausedUntil)) {
+        return response.status(400).json({ error: 'Enter valid exception dates.' });
+      }
+      if (customDeadline && customDeadline < monthlyPeriod.payment_deadline) {
+        return response.status(400).json({ error: 'An extended deadline cannot be earlier than the normal deadline.' });
+      }
+      if (!customDeadline && !pausedUntil && !penaltiesWaived) {
+        return response.status(400).json({ error: 'Extend the deadline, pause penalties, or waive them.' });
+      }
+      if (reason.length > 500) {
+        return response.status(400).json({ error: 'The private reason cannot exceed 500 characters.' });
+      }
+
+      const { data: existing, error: existingError } = await auth.supabase
+        .from('settlement_exceptions')
+        .select('id')
+        .eq('player_id', playerId)
+        .eq('monthly_period_id', links.monthlyPeriodId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      const values = {
+        custom_deadline: customDeadline,
+        penalties_paused_until: pausedUntil,
+        penalties_waived: penaltiesWaived,
+        active: true,
+        updated_by: auth.user.id
+      };
+      if (reason) values.reason = reason;
+      const result = existing
+        ? await auth.supabase.from('settlement_exceptions').update(values).eq('id', existing.id)
+        : await auth.supabase.from('settlement_exceptions').insert({
+          player_id: playerId,
+          monthly_period_id: links.monthlyPeriodId,
+          ...values,
+          created_by: auth.user.id
+        });
+      if (result.error) throw result.error;
+      return response.status(200).json({ message: 'Settlement exception saved.' });
     }
 
     if (body.action === 'reverse') {
@@ -344,10 +455,14 @@ module.exports = async function handler(request, response) {
   } catch (error) {
     console.error(error);
     const errorText = String(error.message || '');
+    const missingExceptions = ['42P01', 'PGRST205'].includes(error?.code)
+      && errorText.toLowerCase().includes('settlement_exceptions');
     const missingTable = ['42P01', 'PGRST205'].includes(error?.code)
       && errorText.toLowerCase().includes('payments');
     return response.status(500).json({
-      error: missingTable
+      error: missingExceptions
+        ? 'Settlement exceptions are not configured yet. Run database/009-settlement-exceptions.sql in Supabase.'
+        : missingTable
         ? 'Payments are not configured yet. Run database/007-player-payment-ledger.sql in Supabase.'
         : (error.message || 'Unable to process payments.')
     });

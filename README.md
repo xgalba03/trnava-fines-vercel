@@ -30,11 +30,13 @@ logging in with email and password.
    records. This migration does not change or mark individual fines.
 9. Run [`database/008-automatic-late-payment-fines.sql`](database/008-automatic-late-payment-fines.sql)
    to add the system-managed fine type used by the daily overdue-payment job.
-10. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+10. Run [`database/009-settlement-exceptions.sql`](database/009-settlement-exceptions.sql)
+   to add private administrator exceptions for individual players and months.
+11. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-11. Import this repository into Vercel.
-12. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+12. Import this repository into Vercel.
+13. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -45,7 +47,7 @@ logging in with email and password.
    - `SITE_URL`: the production HTTPS Vercel URL, without a trailing path.
    - `CRON_SECRET`: a long random server-only secret used by Vercel when it runs
      the daily obligation and overdue-payment fine job.
-13. Redeploy after changing environment variables.
+14. Redeploy after changing environment variables.
 
 In **Supabase -> Authentication -> URL Configuration**, set the Site URL and an
 allowed redirect URL to the deployed site. This ensures the one-time password
@@ -177,6 +179,13 @@ backfills a missed day. Recording enough payment to cover that month's fines,
 credits, and previous late fees stops future penalties. Automatic late-payment
 fines remain linked to the original settlement month even when they occur in the
 following calendar month.
+
+Use **Admin -> Payment exception**, or the **Exception** button beside a player,
+to extend that player's deadline, pause penalties through a chosen date, or
+waive automatic penalties for the selected settlement month. Players can see
+that an exception applies, but its administrator reason remains private. Clearing
+an exception restores the normal rule for future job runs; fines already created
+remain in the audit history.
 
 ## Color theme
 

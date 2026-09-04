@@ -116,6 +116,11 @@ test('monthly balances combine fines, credits, and player-level payments', async
             })
           };
         }
+        if (table === 'settlement_exceptions') {
+          return {
+            select: () => ({ eq: () => resolved([]) })
+          };
+        }
         assert.equal(table, 'payments');
         return {
           select: () => ({
@@ -146,7 +151,9 @@ test('monthly balances combine fines, credits, and player-level payments', async
     adjustments: -2,
     paid: 4,
     balance: 3,
-    settlement_status: 'overdue'
+    settlement_status: 'overdue',
+    effective_deadline: '2026-09-01',
+    exception: null
   }]);
   assert.deepEqual(response.body.payments, [activePayments[0]]);
 });
@@ -327,4 +334,116 @@ test('admin sets a club payment date and the configured five-day deadline', asyn
     payment_deadline: '2026-10-19'
   });
   assert.equal(response.body.monthly_period.payment_deadline, '2026-10-19');
+});
+
+test('admin saves a private player exception for one settlement month', async () => {
+  let insertedException;
+
+  clientFactory = (_url, _key, options) => {
+    assert.equal(options.global.headers.Authorization, 'Bearer access');
+    return {
+      auth: {
+        getUser: async () => ({
+          data: { user: { id: 'admin-id', email: 'admin@example.com' } },
+          error: null
+        })
+      },
+      from(table) {
+        if (table === 'players') {
+          return {
+            select: () => ({
+              eq: () => ({ maybeSingle: () => resolved({ id: 7, active: true }) })
+            })
+          };
+        }
+        if (table === 'seasons') {
+          return {
+            select: () => ({
+              order: () => resolved([{
+                id: 2, start_date: '2026-08-01', end_date: '2027-06-30', active: true
+              }])
+            })
+          };
+        }
+        if (table === 'monthly_periods') {
+          return {
+            upsert: () => ({
+              select: () => ({ single: () => resolved({ id: 9 }) })
+            }),
+            select: () => ({
+              eq: () => ({ maybeSingle: () => resolved({ id: 9, payment_deadline: '2026-10-19' }) })
+            })
+          };
+        }
+        assert.equal(table, 'settlement_exceptions');
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: () => resolved(null) })
+            })
+          }),
+          insert(value) {
+            insertedException = value;
+            return resolved(null);
+          }
+        };
+      }
+    };
+  };
+
+  const response = createResponse();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer access' },
+    body: {
+      action: 'configure_exception',
+      player_id: '7',
+      period_month: '2026-09',
+      custom_deadline: '2026-10-26',
+      penalties_paused_until: '',
+      penalties_waived: false,
+      reason: 'Approved travel'
+    }
+  }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(insertedException, {
+    player_id: 7,
+    monthly_period_id: 9,
+    custom_deadline: '2026-10-26',
+    penalties_paused_until: null,
+    penalties_waived: false,
+    reason: 'Approved travel',
+    active: true,
+    updated_by: 'admin-id',
+    created_by: 'admin-id'
+  });
+});
+
+test('public settlement status reflects a pause without exposing a reason', () => {
+  const balances = handler.addSettlementStatuses(
+    [{
+      player_id: 7,
+      player_name: 'Alex',
+      opening_balance: 0,
+      charges: 10,
+      adjustments: 0,
+      paid: 0,
+      balance: 10
+    }],
+    { payment_deadline: '2026-10-19' },
+    [{
+      id: 4,
+      player_id: 7,
+      active: true,
+      custom_deadline: null,
+      penalties_paused_until: '2026-10-25',
+      penalties_waived: false
+    }],
+    '2026-10-22'
+  );
+
+  assert.equal(balances[0].settlement_status, 'paused');
+  assert.equal(balances[0].effective_deadline, '2026-10-19');
+  assert.equal(Object.hasOwn(balances[0].exception, 'reason'), false);
 });

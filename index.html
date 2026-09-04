@@ -363,7 +363,8 @@
       }
 
       .status-pill.settled,
-      .status-pill.credit {
+      .status-pill.credit,
+      .status-pill.waived {
         background: var(--success-bg);
         color: var(--success);
       }
@@ -466,6 +467,7 @@
         #fine-form,
         #payment-form,
         #settlement-form,
+        #exception-form,
         #event-form,
         #obligation-form {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -618,6 +620,43 @@
           </form>
           <p id="settlement-status" role="status"></p>
         </div>
+        <div id="exception-entry" hidden>
+          <h3>Payment exception</h3>
+          <p>Change one player's deadline, pause penalties temporarily, or waive them for a settlement month.</p>
+          <form id="exception-form">
+            <label class="form-field">
+              <span>Player</span>
+              <select name="player_id" required disabled>
+                <option value="">Loading players...</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span>Settlement month</span>
+              <input name="period_month" type="month" required />
+            </label>
+            <label class="form-field">
+              <span>Extended deadline (optional)</span>
+              <input name="custom_deadline" type="date" />
+            </label>
+            <label class="form-field">
+              <span>Pause penalties through (optional)</span>
+              <input name="penalties_paused_until" type="date" />
+            </label>
+            <label class="checkbox-field full-width">
+              <input name="penalties_waived" type="checkbox" />
+              <span>Waive all automatic penalties for this month</span>
+            </label>
+            <label class="form-field full-width">
+              <span>Private reason (optional; blank keeps previous)</span>
+              <input name="reason" maxlength="500" placeholder="Not shown publicly" />
+            </label>
+            <div class="actions full-width">
+              <button id="exception-clear" class="secondary" type="button">Clear exception</button>
+              <button type="submit">Save exception</button>
+            </div>
+          </form>
+          <p id="exception-status" role="status"></p>
+        </div>
         <section id="password-settings" hidden>
           <h3>Password</h3>
           <p>Set or change the password for future admin logins.</p>
@@ -767,6 +806,10 @@
       const settlementCalculation = document.querySelector('#settlement-calculation');
       const settlementStatus = document.querySelector('#settlement-status');
       const settlementSummary = document.querySelector('#settlement-summary');
+      const exceptionEntry = document.querySelector('#exception-entry');
+      const exceptionForm = document.querySelector('#exception-form');
+      const exceptionStatus = document.querySelector('#exception-status');
+      const exceptionClear = document.querySelector('#exception-clear');
       const balancePeriod = document.querySelector('#balance-period');
       const balanceList = document.querySelector('#balances');
       const paymentList = document.querySelector('#payments');
@@ -805,6 +848,7 @@
         fineEntry,
         paymentEntry,
         settlementEntry,
+        exceptionEntry,
         document.querySelector('#event-admin'),
         document.querySelector('#obligation-admin'),
         document.querySelector('#admin-tools'),
@@ -852,6 +896,7 @@
         fineEntry.hidden = !loggedIn;
         paymentEntry.hidden = !loggedIn;
         settlementEntry.hidden = !loggedIn;
+        exceptionEntry.hidden = !loggedIn;
         passwordSettings.hidden = !loggedIn;
         adminOnly.forEach((element) => { element.hidden = !loggedIn; });
         login.hidden = loggedIn;
@@ -1019,6 +1064,7 @@
         if (!balancePeriod.value) balancePeriod.value = localTime.toISOString().slice(0, 7);
         paymentForm.elements.period_month.value = balancePeriod.value;
         settlementForm.elements.period_month.value = balancePeriod.value;
+        exceptionForm.elements.period_month.value = balancePeriod.value;
       }
 
       function updateSettlementCalculation() {
@@ -1157,14 +1203,23 @@
           const openingText = Number(balance.opening_balance) === 0
             ? ''
             : `carried ${Number(balance.opening_balance) < 0 ? '−' : ''}€${Math.abs(Number(balance.opening_balance)).toFixed(2)} · `;
-          detail.textContent = `${openingText}fines €${Number(balance.charges).toFixed(2)}${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}`;
+          const exceptionText = balance.exception?.penalties_waived
+            ? ' · penalties waived'
+            : balance.exception?.penalties_paused_until
+              ? ` · paused through ${dateOnlyLabel(balance.exception.penalties_paused_until)}`
+              : balance.exception?.custom_deadline
+                ? ` · deadline ${dateOnlyLabel(balance.exception.custom_deadline)}`
+                : '';
+          detail.textContent = `${openingText}fines €${Number(balance.charges).toFixed(2)}${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}${exceptionText}`;
           const statusBadge = document.createElement('span');
           const statusLabels = {
             no_balance: 'No balance',
             due: 'Payment due',
             overdue: 'Overdue',
             settled: 'Settled',
-            credit: 'Account credit'
+            credit: 'Account credit',
+            paused: 'Penalties paused',
+            waived: 'Penalties waived'
           };
           statusBadge.className = `status-pill ${balance.settlement_status || 'due'}`;
           statusBadge.textContent = statusLabels[balance.settlement_status] || 'Payment due';
@@ -1190,6 +1245,16 @@
               setCurrentPaymentValues();
               paymentStatus.textContent = '';
               openAdminAt(paymentEntry);
+            }));
+            actions.append(actionButton('Exception', () => {
+              exceptionForm.elements.player_id.value = String(balance.player_id);
+              exceptionForm.elements.period_month.value = balancePeriod.value;
+              exceptionForm.elements.custom_deadline.value = balance.exception?.custom_deadline || '';
+              exceptionForm.elements.penalties_paused_until.value = balance.exception?.penalties_paused_until || '';
+              exceptionForm.elements.penalties_waived.checked = Boolean(balance.exception?.penalties_waived);
+              exceptionForm.elements.reason.value = '';
+              exceptionStatus.textContent = '';
+              openAdminAt(exceptionEntry);
             }));
           }
           item.append(copy, actions);
@@ -1276,6 +1341,11 @@
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
         paymentForm.elements.player_id.disabled = playerOptions.length === 0;
+        exceptionForm.elements.player_id.replaceChildren(
+          option('', 'Select player'),
+          ...[...playersById.values()].map((player) => option(player.id, player.name))
+        );
+        exceptionForm.elements.player_id.disabled = playerOptions.length === 0;
         eventForm.elements.player_ids.replaceChildren(
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
@@ -1544,6 +1614,7 @@
       balancePeriod.addEventListener('change', () => {
         paymentForm.elements.period_month.value = balancePeriod.value;
         settlementForm.elements.period_month.value = balancePeriod.value;
+        exceptionForm.elements.period_month.value = balancePeriod.value;
         loadPayments().catch((error) => { accountStatus.textContent = error.message; });
       });
       settlementForm.elements.club_payment_date.addEventListener('input', updateSettlementCalculation);
@@ -1563,6 +1634,49 @@
           settlementStatus.textContent = error.message;
         } finally {
           button.disabled = false;
+        }
+      });
+
+      exceptionForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = event.submitter;
+        button.disabled = true;
+        try {
+          const body = Object.fromEntries(new FormData(exceptionForm));
+          body.action = 'configure_exception';
+          body.penalties_waived = exceptionForm.elements.penalties_waived.checked;
+          await runAdminAction('/api/payments', body, exceptionStatus);
+          balancePeriod.value = body.period_month;
+          await loadPayments();
+        } catch (error) {
+          exceptionStatus.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      exceptionClear.addEventListener('click', async () => {
+        const playerId = exceptionForm.elements.player_id.value;
+        const period = exceptionForm.elements.period_month.value;
+        if (!playerId || !period) {
+          exceptionStatus.textContent = 'Choose a player and settlement month.';
+          return;
+        }
+        exceptionClear.disabled = true;
+        try {
+          await runAdminAction('/api/payments', {
+            action: 'clear_exception', player_id: playerId, period_month: period
+          }, exceptionStatus);
+          exceptionForm.elements.custom_deadline.value = '';
+          exceptionForm.elements.penalties_paused_until.value = '';
+          exceptionForm.elements.penalties_waived.checked = false;
+          exceptionForm.elements.reason.value = '';
+          balancePeriod.value = period;
+          await loadPayments();
+        } catch (error) {
+          exceptionStatus.textContent = error.message;
+        } finally {
+          exceptionClear.disabled = false;
         }
       });
 
