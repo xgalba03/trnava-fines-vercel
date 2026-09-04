@@ -239,6 +239,17 @@
         text-decoration: line-through;
       }
 
+      .fine-filters {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin: 0.85rem 0 0.35rem;
+      }
+
+      .fine-filters button {
+        align-self: end;
+      }
+
       .form-field {
         display: grid;
         gap: 0.25rem;
@@ -479,6 +490,10 @@
         #event-form,
         #obligation-form {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .fine-filters {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
         }
       }
 
@@ -740,6 +755,22 @@
               <span class="section-subtitle">Latest team activity</span>
             </div>
           </div>
+          <div class="fine-filters" aria-label="Fine history filters">
+            <label class="form-field">
+              <span>Player</span>
+              <select id="fine-filter-player"><option value="">All players</option></select>
+            </label>
+            <label class="form-field">
+              <span>Month</span>
+              <input id="fine-filter-month" type="month" />
+            </label>
+            <label class="form-field">
+              <span>Fine type</span>
+              <select id="fine-filter-type"><option value="">All fine types</option></select>
+            </label>
+            <button id="fine-filter-clear" class="secondary" type="button">Clear filters</button>
+          </div>
+          <span id="fine-filter-summary" class="section-subtitle"></span>
           <p id="status" role="status"></p>
           <ul id="fines" class="scroll-list fines-list" data-empty="No fines recorded yet."></ul>
         </section>
@@ -813,6 +844,11 @@
       const calculation = document.querySelector('#calculation');
       const status = document.querySelector('#status');
       const fines = document.querySelector('#fines');
+      const fineFilterPlayer = document.querySelector('#fine-filter-player');
+      const fineFilterMonth = document.querySelector('#fine-filter-month');
+      const fineFilterType = document.querySelector('#fine-filter-type');
+      const fineFilterClear = document.querySelector('#fine-filter-clear');
+      const fineFilterSummary = document.querySelector('#fine-filter-summary');
       const paymentEntry = document.querySelector('#payment-entry');
       const paymentForm = document.querySelector('#payment-form');
       const paymentStatus = document.querySelector('#payment-status');
@@ -876,6 +912,7 @@
       const eventsById = new Map();
       let isAdmin = false;
       let settlementDeadlineDays = 5;
+      let fineItems = [];
 
       let accessToken = localStorage.getItem('trnava_access_token');
       let refreshToken = localStorage.getItem('trnava_refresh_token');
@@ -1174,10 +1211,49 @@
         if (resetAmount) amountInput.value = amountPerFine.toFixed(2);
       }
 
-      function render(items) {
-        fines.replaceChildren(...items.map((fine) => {
+      function updateFineFilterOptions(items) {
+        const selectedPlayer = fineFilterPlayer.value;
+        const selectedType = fineFilterType.value;
+        const players = new Map();
+        const types = new Map();
+        for (const fine of items) {
+          const player = related(fine.player);
+          const fineType = related(fine.fine_type);
+          if (fine.player_id && player?.name) players.set(String(fine.player_id), player.name);
+          if (fine.fine_type_id) types.set(String(fine.fine_type_id), fineType?.name || fine.name);
+        }
+        const byName = (left, right) => left[1].localeCompare(right[1]);
+        fineFilterPlayer.replaceChildren(
+          option('', 'All players'),
+          ...[...players].sort(byName).map(([id, name]) => option(id, name))
+        );
+        fineFilterType.replaceChildren(
+          option('', 'All fine types'),
+          ...[...types].sort(byName).map(([id, name]) => option(id, name))
+        );
+        if (players.has(selectedPlayer)) fineFilterPlayer.value = selectedPlayer;
+        if (types.has(selectedType)) fineFilterType.value = selectedType;
+      }
+
+      function render(items = null) {
+        if (items !== null) {
+          fineItems = items;
+          updateFineFilterOptions(items);
+        }
+        const filteredItems = fineItems.filter((fine) => {
+          if (fineFilterPlayer.value && String(fine.player_id) !== fineFilterPlayer.value) return false;
+          if (fineFilterType.value && String(fine.fine_type_id) !== fineFilterType.value) return false;
+          if (fineFilterMonth.value && localInputValue(fine.occurred_at).slice(0, 7) !== fineFilterMonth.value) return false;
+          return true;
+        });
+        fineFilterSummary.textContent = filteredItems.length === fineItems.length
+          ? `${fineItems.length} fine${fineItems.length === 1 ? '' : 's'}`
+          : `Showing ${filteredItems.length} of ${fineItems.length} fines`;
+        fines.replaceChildren(...filteredItems.map((fine) => {
           const item = document.createElement('li');
-          if (fine.voided_at) item.className = 'voided-item';
+          const objection = related(fine.objection);
+          const acceptedObjection = objection?.status === 'accepted';
+          if (fine.voided_at || acceptedObjection) item.className = 'voided-item';
           const description = document.createElement('span');
           const amount = document.createElement('strong');
           const relatedPlayer = Array.isArray(fine.player) ? fine.player[0] : fine.player;
@@ -1193,8 +1269,10 @@
             ? fine.metadata.edit_history.length
             : 0;
           const editText = editCount ? ` (edited ${editCount}×)` : '';
-          const voidText = fine.voided_at
-            ? ` — voided${fine.void_reason ? `: ${fine.void_reason}` : ''}`
+          const voidText = acceptedObjection
+            ? ' — accepted objection; fine voided'
+            : fine.voided_at
+              ? ` — voided${fine.void_reason ? `: ${fine.void_reason}` : ''}`
             : '';
           description.textContent = `${relatedPlayer?.name ? `${relatedPlayer.name}: ` : ''}`
             + `${fineName}${quantityText}${multiplierText}${overrideText}${editText}${voidText}`;
@@ -1934,6 +2012,15 @@
         openAdminAt(fineEntry);
       });
       fineReset.addEventListener('click', resetFineForm);
+      for (const filter of [fineFilterPlayer, fineFilterMonth, fineFilterType]) {
+        filter.addEventListener('change', () => render());
+      }
+      fineFilterClear.addEventListener('click', () => {
+        fineFilterPlayer.value = '';
+        fineFilterMonth.value = '';
+        fineFilterType.value = '';
+        render();
+      });
       adminMenuButton.addEventListener('click', () => openAdminAt(adminDialogContent));
       closeLogin.addEventListener('click', () => loginDialog.close());
       closeAdmin.addEventListener('click', () => adminDialog.close());

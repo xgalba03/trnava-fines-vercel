@@ -37,6 +37,7 @@ function selectColumns(includeAuditFields = false) {
     'amount_overridden',
     'obligation_id',
     'objection_id',
+    'objection:objections!objections_fine_id_fkey(status)',
     'note',
     'created_at',
     'player:players(name)',

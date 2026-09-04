@@ -32,11 +32,14 @@ logging in with email and password.
    to add the system-managed fine type used by the daily overdue-payment job.
 10. Run [`database/009-settlement-exceptions.sql`](database/009-settlement-exceptions.sql)
    to add private administrator exceptions for individual players and months.
-11. Use [`migration.sql`](migration.sql) only for the original MVP table that had
+11. Run [`database/010-public-accepted-objection-fines.sql`](database/010-public-accepted-objection-fines.sql)
+   so accepted-objection fines remain visible in public history while other
+   voided records stay private and all voided records stay out of balances.
+12. Use [`migration.sql`](migration.sql) only for the original MVP table that had
    no `user_id` column. Read its warning first: it deletes rows that cannot be
    assigned to an owner.
-12. Import this repository into Vercel.
-13. In **Vercel -> Project Settings -> Environment Variables**, add the variables
+13. Import this repository into Vercel.
+14. In **Vercel -> Project Settings -> Environment Variables**, add the variables
    listed in [`.env.example`](.env.example) for Production (and Preview if used):
    - `SUPABASE_URL`: the Supabase Project URL.
    - `SUPABASE_ANON_KEY`: the publishable/anon key used for public reads and
@@ -112,9 +115,12 @@ While logged in, manually entered active fines have an **Edit** action. Each edi
 stores the previous fine values in that row's private metadata for audit. An
 active fine not linked to an objection can instead be **Voided**, which requires a reason. Voiding never
 deletes the database row: administrators continue to see the crossed-out record
-and reason for audit, while public fine history and player balances exclude it.
+and reason for audit. A fine voided by an accepted objection remains visible to
+everyone as a crossed-out historical record, but is excluded from player balances.
+Other voided fines remain admin-only.
 Fines linked to an objection and system-created fines cannot be edited directly;
 void and replace them when a correction is needed.
+The public fine list can be filtered locally by player, month, and fine type.
 
 After editing seed JSON and deploying it, log in and select **Sync seed files**.
 The sync updates matching catalogue/calendar records by their stable codes; it

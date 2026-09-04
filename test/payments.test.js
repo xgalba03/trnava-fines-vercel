@@ -77,17 +77,25 @@ test('monthly balances combine fines, credits, and player-level payments', async
           };
         }
         if (table === 'fines') {
-          return { select: () => resolved([
-            { player_id: 7, amount: 10, occurred_at: '2026-09-10T10:00:00Z' },
-            {
-              player_id: 7,
-              amount: 1,
-              occurred_at: '2026-10-20T12:00:00Z',
-              monthly_period_id: 9,
-              monthly_period: { period_month: '2026-09-01' }
-            },
-            { player_id: 7, amount: 50, occurred_at: '2026-08-10T10:00:00Z' }
-          ]) };
+          return {
+            select: () => ({
+              is(column, value) {
+                assert.equal(column, 'voided_at');
+                assert.equal(value, null);
+                return resolved([
+                  { player_id: 7, amount: 10, occurred_at: '2026-09-10T10:00:00Z' },
+                  {
+                    player_id: 7,
+                    amount: 1,
+                    occurred_at: '2026-10-20T12:00:00Z',
+                    monthly_period_id: 9,
+                    monthly_period: { period_month: '2026-09-01' }
+                  },
+                  { player_id: 7, amount: 50, occurred_at: '2026-08-10T10:00:00Z' }
+                ]);
+              }
+            })
+          };
         }
         if (table === 'financial_adjustments') {
           return { select: () => resolved([

@@ -183,7 +183,8 @@ async function loadSnapshot(supabase, period) {
   ] = await Promise.all([
     supabase.from('players').select('id, name, active').eq('active', true).order('name'),
     supabase.from('fines')
-      .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)'),
+      .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)')
+      .is('voided_at', null),
     supabase.from('financial_adjustments')
       .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)'),
     supabase.from('payments')
