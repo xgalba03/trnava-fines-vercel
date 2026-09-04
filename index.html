@@ -37,20 +37,27 @@
       }
 
       #auth-form,
+      #password-form,
       #app {
         display: grid;
         gap: 0.75rem;
       }
 
-      #auth-form {
-        grid-template-columns: 1fr auto;
+      #auth-form,
+      #password-form {
+        grid-template-columns: 1fr 1fr auto;
       }
 
-      #auth {
+      #auth,
+      #password-settings {
         margin: 1rem 0;
         padding: 1rem;
         border: 1px solid #dfe5eb;
         border-radius: 4px;
+      }
+
+      #password-settings[hidden] {
+        display: none;
       }
 
       #app-header {
@@ -104,6 +111,11 @@
         cursor: pointer;
       }
 
+      button.secondary {
+        background: #ffffff;
+        color: #17202a;
+      }
+
       button:disabled {
         cursor: wait;
         opacity: 0.6;
@@ -129,7 +141,8 @@
       }
 
       @media (max-width: 36rem) {
-        #auth-form {
+        #auth-form,
+        #password-form {
           grid-template-columns: 1fr;
         }
 
@@ -150,11 +163,13 @@
           </div>
         </div>
         <section id="auth" hidden>
-          <p>Admin access is required to add fines.</p>
+          <p>Admin access is required to manage fines.</p>
           <form id="auth-form">
-            <input name="email" type="email" placeholder="Your email" required />
-            <button type="submit">Email me a login link</button>
+            <input name="email" type="email" placeholder="Your email" autocomplete="username" required />
+            <input name="password" type="password" placeholder="Password" autocomplete="current-password" required />
+            <button type="submit">Log in</button>
           </form>
+          <button id="magic-link" class="secondary" type="button">Send one-time setup link</button>
           <p id="auth-status" role="status"></p>
         </section>
         <div id="fine-entry" hidden>
@@ -165,6 +180,15 @@
             <button type="submit">Add fine</button>
           </form>
         </div>
+        <section id="password-settings" hidden>
+          <p>Set or change the password for future admin logins.</p>
+          <form id="password-form">
+            <input name="password" type="password" minlength="12" placeholder="New password" autocomplete="new-password" required />
+            <input name="confirmation" type="password" minlength="12" placeholder="Confirm password" autocomplete="new-password" required />
+            <button type="submit">Save password</button>
+          </form>
+          <p id="password-status" role="status"></p>
+        </section>
         <p>Recent fines</p>
         <p id="status" role="status"></p>
         <ul id="fines"></ul>
@@ -174,29 +198,111 @@
       const auth = document.querySelector('#auth');
       const authForm = document.querySelector('#auth-form');
       const authStatus = document.querySelector('#auth-status');
-      const app = document.querySelector('#app');
       const fineEntry = document.querySelector('#fine-entry');
       const login = document.querySelector('#login');
       const logout = document.querySelector('#logout');
+      const magicLink = document.querySelector('#magic-link');
+      const passwordSettings = document.querySelector('#password-settings');
+      const passwordForm = document.querySelector('#password-form');
+      const passwordStatus = document.querySelector('#password-status');
       const form = document.querySelector('#fine-form');
       const status = document.querySelector('#status');
       const fines = document.querySelector('#fines');
-      let accessToken = localStorage.getItem('trnava_access_token');
 
-      function setLoggedIn(session) {
+      let accessToken = localStorage.getItem('trnava_access_token');
+      let refreshToken = localStorage.getItem('trnava_refresh_token');
+      let expiresAt = localStorage.getItem('trnava_expires_at');
+
+      function updateAuthUi(loggedIn, showForm = false) {
+        auth.hidden = loggedIn || !showForm;
+        fineEntry.hidden = !loggedIn;
+        passwordSettings.hidden = !loggedIn;
+        login.hidden = loggedIn;
+        logout.hidden = !loggedIn;
+      }
+
+      function saveSession(session) {
         accessToken = session?.access_token || null;
+        refreshToken = session?.refresh_token || null;
+        expiresAt = session?.expires_at ? String(session.expires_at) : null;
+
         if (accessToken) localStorage.setItem('trnava_access_token', accessToken);
         else localStorage.removeItem('trnava_access_token');
-        auth.hidden = Boolean(accessToken);
-        fineEntry.hidden = !accessToken;
-        login.hidden = Boolean(accessToken);
-        logout.hidden = !accessToken;
+        if (refreshToken) localStorage.setItem('trnava_refresh_token', refreshToken);
+        else localStorage.removeItem('trnava_refresh_token');
+        if (expiresAt) localStorage.setItem('trnava_expires_at', expiresAt);
+        else localStorage.removeItem('trnava_expires_at');
+      }
+
+      function clearSession() {
+        saveSession(null);
+        updateAuthUi(false);
       }
 
       function showLogin(message) {
-        setLoggedIn(null);
-        auth.hidden = false;
-        authStatus.textContent = message;
+        clearSession();
+        updateAuthUi(false, true);
+        authStatus.textContent = message || '';
+      }
+
+      async function readJson(response) {
+        const text = await response.text();
+        if (!text) return {};
+        try {
+          return JSON.parse(text);
+        } catch {
+          return { error: 'The server returned an invalid response.' };
+        }
+      }
+
+      async function refreshSession() {
+        if (!refreshToken) return false;
+
+        const response = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'refresh', refresh_token: refreshToken })
+        });
+        const data = await readJson(response);
+        if (!response.ok || !data.session) {
+          clearSession();
+          return false;
+        }
+
+        saveSession(data.session);
+        updateAuthUi(true);
+        return true;
+      }
+
+      async function validateSession() {
+        if (!accessToken) {
+          updateAuthUi(false);
+          return false;
+        }
+
+        const response = await fetch('/api/auth', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (response.ok) {
+          updateAuthUi(true);
+          return true;
+        }
+
+        return refreshSession();
+      }
+
+      async function authorizedFetch(url, options) {
+        const send = () => fetch(url, {
+          ...options,
+          headers: {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+
+        let response = await send();
+        if (response.status === 401 && await refreshSession()) response = await send();
+        return response;
       }
 
       function render(items) {
@@ -212,34 +318,32 @@
       }
 
       async function loadFines() {
-        const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-        const response = await fetch('/api/fines', { headers });
-        const data = await response.json();
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 403) showLogin(data.error);
-          throw new Error(data.error);
-        }
-        render(data.fines);
+        const response = await fetch('/api/fines');
+        const data = await readJson(response);
+        if (!response.ok) throw new Error(data.error || 'Unable to load fines.');
+        render(data.fines || []);
       }
 
       authForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const button = event.submitter;
         button.disabled = true;
-        authStatus.textContent = 'Working...';
+        authStatus.textContent = 'Logging in...';
         try {
           const body = Object.fromEntries(new FormData(authForm));
+          body.action = 'login';
           const response = await fetch('/api/auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
           });
-          const data = await response.json();
-          if (!response.ok) {
-            if (response.status === 401 || response.status === 403) showLogin(data.error);
-            throw new Error(data.error);
-          }
-          authStatus.textContent = data.message;
+          const data = await readJson(response);
+          if (!response.ok || !data.session) throw new Error(data.error || 'Login failed.');
+          saveSession(data.session);
+          updateAuthUi(true);
+          authForm.reset();
+          authStatus.textContent = '';
+          status.textContent = 'Logged in as administrator.';
         } catch (error) {
           authStatus.textContent = error.message;
         } finally {
@@ -247,16 +351,86 @@
         }
       });
 
-      login.addEventListener('click', () => {
-        auth.hidden = !auth.hidden;
-        if (!auth.hidden) authForm.querySelector('input').focus();
+      magicLink.addEventListener('click', async () => {
+        const email = authForm.elements.email.value.trim();
+        if (!email) {
+          authStatus.textContent = 'Enter your admin email first.';
+          authForm.elements.email.focus();
+          return;
+        }
+
+        magicLink.disabled = true;
+        authStatus.textContent = 'Requesting setup link...';
+        try {
+          const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'magic_link', email })
+          });
+          const data = await readJson(response);
+          if (!response.ok) throw new Error(data.error || 'Unable to request a setup link.');
+          authStatus.textContent = data.message;
+        } catch (error) {
+          authStatus.textContent = error.message;
+        } finally {
+          magicLink.disabled = false;
+        }
       });
 
-      logout.addEventListener('click', () => {
-        setLoggedIn(null);
-        auth.hidden = true;
-        fines.replaceChildren();
+      passwordForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const button = event.submitter;
+        const body = Object.fromEntries(new FormData(passwordForm));
+        if (body.password !== body.confirmation) {
+          passwordStatus.textContent = 'The passwords do not match.';
+          return;
+        }
+
+        button.disabled = true;
+        passwordStatus.textContent = 'Saving...';
+        try {
+          const response = await authorizedFetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'set_password', password: body.password })
+          });
+          const data = await readJson(response);
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) showLogin(data.error);
+            throw new Error(data.error || 'Unable to save the password.');
+          }
+          passwordForm.reset();
+          passwordStatus.textContent = data.message;
+        } catch (error) {
+          passwordStatus.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      login.addEventListener('click', () => {
+        auth.hidden = !auth.hidden;
+        authStatus.textContent = '';
+        if (!auth.hidden) authForm.elements.email.focus();
+      });
+
+      logout.addEventListener('click', async () => {
+        const previousAccessToken = accessToken;
+        const previousRefreshToken = refreshToken;
+        clearSession();
         status.textContent = '';
+        try {
+          await fetch('/api/auth', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${previousAccessToken}`
+            },
+            body: JSON.stringify({ refresh_token: previousRefreshToken })
+          });
+        } finally {
+          loadFines().catch((error) => { status.textContent = error.message; });
+        }
       });
 
       form.addEventListener('submit', async (event) => {
@@ -265,18 +439,18 @@
         button.disabled = true;
         status.textContent = 'Saving...';
         try {
-          const response = await fetch('/api/fines', {
+          const response = await authorizedFetch('/api/fines', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${accessToken}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(Object.fromEntries(new FormData(form)))
           });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error);
+          const data = await readJson(response);
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) showLogin(data.error);
+            throw new Error(data.error || 'Unable to save the fine.');
+          }
           form.reset();
-          render(data.fines);
+          render(data.fines || []);
           status.textContent = 'Saved.';
         } catch (error) {
           status.textContent = error.message;
@@ -285,16 +459,31 @@
         }
       });
 
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const hashToken = hashParams.get('access_token');
-      if (hashToken) {
-        accessToken = hashToken;
-        window.history.replaceState({}, document.title, window.location.pathname);
+      async function initialize() {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const hashAccessToken = hashParams.get('access_token');
+        const hashRefreshToken = hashParams.get('refresh_token');
+        const hashExpiresAt = hashParams.get('expires_at');
+        const hashError = hashParams.get('error_description');
+
+        if (hashAccessToken) {
+          saveSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+            expires_at: hashExpiresAt
+          });
+        }
+        if (hashAccessToken || hashError) {
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        }
+
+        if (hashError) showLogin(hashError);
+        else await validateSession();
+
+        await loadFines();
       }
-      if (accessToken) {
-        setLoggedIn({ access_token: accessToken });
-      }
-      loadFines().catch((error) => { status.textContent = error.message; });
+
+      initialize().catch((error) => { status.textContent = error.message; });
     </script>
   </body>
 </html>
