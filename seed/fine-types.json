@@ -22,7 +22,7 @@
       "defaultAmount": 1,
       "unitName": null,
       "matchDayOnly": false,
-      "doubleOnMatchDay": false,
+      "doubleOnMatchDay": true,
       "matchDayMultiplier": 5,
       "category": "Training",
       "active": true
