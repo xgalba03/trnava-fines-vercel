@@ -19,11 +19,11 @@
       "name": "Útok/Servis mimo/popod sieť",
       "description": "Podanie alebo útok popod sieť (bez dotyku) alebo mimo antény",
       "calculationMode": "fixed",
-      "defaultAmount": 5,
+      "defaultAmount": 1,
       "unitName": null,
       "matchDayOnly": false,
       "doubleOnMatchDay": false,
-      "matchDayMultiplier": 2,
+      "matchDayMultiplier": 5,
       "category": "Training",
       "active": true
     },
