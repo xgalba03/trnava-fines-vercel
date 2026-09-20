@@ -1270,17 +1270,31 @@
         .map((link) => document.querySelector(link.hash))
         .filter(Boolean);
       let navigationFrame = 0;
+      let navigationTargetHash = '';
+      let navigationSettleTimer = 0;
+
+      function setActiveNavigation(hash) {
+        for (const link of topNavLinks) {
+          if (link.hash === hash) link.setAttribute('aria-current', 'true');
+          else link.removeAttribute('aria-current');
+        }
+      }
 
       function updateActiveNavigation() {
-        const marker = appHeader.getBoundingClientRect().bottom + 16;
+        if (navigationTargetHash) {
+          setActiveNavigation(navigationTargetHash);
+          return;
+        }
+        const scrollMargin = Number.parseFloat(getComputedStyle(navigableSections[0]).scrollMarginTop) || 0;
+        const marker = Math.max(appHeader.getBoundingClientRect().bottom + 16, scrollMargin + 2);
         let activeSection = navigableSections[0];
         for (const section of navigableSections) {
           if (section.getBoundingClientRect().top <= marker) activeSection = section;
         }
-        for (const link of topNavLinks) {
-          if (link.hash === `#${activeSection.id}`) link.setAttribute('aria-current', 'true');
-          else link.removeAttribute('aria-current');
+        if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+          activeSection = navigableSections[navigableSections.length - 1];
         }
+        setActiveNavigation(`#${activeSection.id}`);
       }
 
       function queueNavigationUpdate() {
@@ -1291,13 +1305,31 @@
         });
       }
 
+      function finishNavigationScroll() {
+        clearTimeout(navigationSettleTimer);
+        navigationSettleTimer = 0;
+        navigationTargetHash = '';
+        updateActiveNavigation();
+      }
+
+      function postponeNavigationFinish() {
+        clearTimeout(navigationSettleTimer);
+        navigationSettleTimer = setTimeout(finishNavigationScroll, 180);
+      }
+
       topNavLinks.forEach((link) => {
         link.addEventListener('click', () => {
-          topNavLinks.forEach((item) => item.removeAttribute('aria-current'));
-          link.setAttribute('aria-current', 'true');
+          navigationTargetHash = link.hash;
+          setActiveNavigation(link.hash);
+          clearTimeout(navigationSettleTimer);
+          navigationSettleTimer = setTimeout(finishNavigationScroll, 300);
         });
       });
-      window.addEventListener('scroll', queueNavigationUpdate, { passive: true });
+      window.addEventListener('scroll', () => {
+        if (navigationTargetHash) postponeNavigationFinish();
+        queueNavigationUpdate();
+      }, { passive: true });
+      window.addEventListener('scrollend', finishNavigationScroll);
       window.addEventListener('resize', queueNavigationUpdate);
       requestAnimationFrame(updateActiveNavigation);
 
