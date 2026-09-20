@@ -359,6 +359,7 @@
       }
 
       .balance-grid {
+        position: relative;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 0.5rem;
@@ -386,8 +387,9 @@
         border-radius: 0.65rem;
       }
 
-      .balance-card.expanded {
-        grid-column: 1 / -1;
+      .balance-card.active {
+        border-color: var(--strong-border);
+        box-shadow: 0 4px 14px var(--shadow);
       }
 
       .balance-card details {
@@ -422,11 +424,19 @@
       }
 
       .balance-breakdown {
+        position: absolute;
+        right: 0;
+        left: 0;
+        z-index: 5;
         display: grid;
         gap: 0.35rem;
-        margin-top: 0.55rem;
-        padding-top: 0.55rem;
-        border-top: 1px solid var(--strong-border);
+        max-height: min(18rem, 55vh);
+        padding: 0.75rem;
+        overflow-y: auto;
+        background: var(--surface);
+        border: 1px solid var(--strong-border);
+        border-radius: 0.65rem;
+        box-shadow: 0 10px 28px var(--dialog-shadow);
       }
 
       .balance-breakdown-title {
@@ -1834,11 +1844,12 @@
           }
           details.append(summary, breakdown);
           details.addEventListener('toggle', () => {
-            item.classList.toggle('expanded', details.open);
+            item.classList.toggle('active', details.open);
             if (details.open) {
               for (const other of balanceList.querySelectorAll('details[open]')) {
                 if (other !== details) other.open = false;
               }
+              breakdown.style.top = `${item.offsetTop + item.offsetHeight + 6}px`;
             }
           });
           item.append(details);
