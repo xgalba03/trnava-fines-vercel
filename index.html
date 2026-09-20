@@ -386,6 +386,67 @@
         border-radius: 0.65rem;
       }
 
+      .balance-card.expanded {
+        grid-column: 1 / -1;
+      }
+
+      .balance-card details {
+        min-width: 0;
+      }
+
+      .balance-summary {
+        position: relative;
+        display: grid;
+        gap: 0.2rem;
+        min-width: 0;
+        padding-right: 0.7rem;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .balance-summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .balance-summary::after {
+        position: absolute;
+        top: -0.15rem;
+        right: 0;
+        color: var(--subtle);
+        content: '⌄';
+        font-size: 0.8rem;
+      }
+
+      details[open] > .balance-summary::after {
+        content: '⌃';
+      }
+
+      .balance-breakdown {
+        display: grid;
+        gap: 0.35rem;
+        margin-top: 0.55rem;
+        padding-top: 0.55rem;
+        border-top: 1px solid var(--strong-border);
+      }
+
+      .balance-breakdown-title {
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
+      .balance-fine-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.78rem;
+      }
+
+      .balance-fine-row span:first-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
       .balance-card.overdue {
         background: var(--danger-bg);
         border-color: var(--danger);
@@ -1732,7 +1793,55 @@
           state.textContent = statusLabels[settlementState] || 'Due';
           item.title = `${openingText}fines €${Number(balance.charges).toFixed(2)}`
             + `${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}${exceptionText}`;
-          item.append(playerName, amount, state);
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          const breakdown = document.createElement('div');
+          const breakdownTitle = document.createElement('span');
+          summary.className = 'balance-summary';
+          breakdown.className = 'balance-breakdown';
+          breakdownTitle.className = 'balance-breakdown-title';
+          breakdownTitle.textContent = 'Fines in the selected month';
+          summary.append(playerName, amount, state);
+          breakdown.append(breakdownTitle);
+
+          const addBreakdownRow = (label, value) => {
+            const row = document.createElement('div');
+            const name = document.createElement('span');
+            const rowAmount = document.createElement('strong');
+            row.className = 'balance-fine-row';
+            name.textContent = label;
+            rowAmount.textContent = value;
+            row.append(name, rowAmount);
+            breakdown.append(row);
+          };
+          for (const fine of balance.fine_summary || []) {
+            addBreakdownRow(`${fine.count}× ${fine.name}`, moneyLabel(fine.amount));
+          }
+          if (!balance.fine_summary?.length) {
+            const empty = document.createElement('span');
+            empty.className = 'meta';
+            empty.textContent = 'No new fines this month.';
+            breakdown.append(empty);
+          }
+          if (Number(balance.opening_balance) !== 0) {
+            addBreakdownRow('Carried balance', moneyLabel(balance.opening_balance));
+          }
+          if (Number(balance.adjustments) !== 0) {
+            addBreakdownRow('Adjustments', moneyLabel(balance.adjustments));
+          }
+          if (Number(balance.paid) !== 0) {
+            addBreakdownRow('Payments received', `−${moneyLabel(balance.paid)}`);
+          }
+          details.append(summary, breakdown);
+          details.addEventListener('toggle', () => {
+            item.classList.toggle('expanded', details.open);
+            if (details.open) {
+              for (const other of balanceList.querySelectorAll('details[open]')) {
+                if (other !== details) other.open = false;
+              }
+            }
+          });
+          item.append(details);
           if (isAdmin) {
             const actions = document.createElement('div');
             actions.className = 'actions';

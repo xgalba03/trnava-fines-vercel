@@ -111,7 +111,8 @@ function buildBalances(players, fines, adjustments, payments, period) {
     charges: 0,
     adjustments: 0,
     paid: 0,
-    balance: 0
+    balance: 0,
+    fine_summary: []
   }]));
 
   for (const fine of fines || []) {
@@ -120,7 +121,23 @@ function buildBalances(players, fines, adjustments, payments, period) {
     const row = totals.get(String(fine.player_id));
     if (!row) continue;
     if (finePeriod < period) row.opening_balance = roundMoney(row.opening_balance + Number(fine.amount));
-    else row.charges = roundMoney(row.charges + Number(fine.amount));
+    else {
+      row.charges = roundMoney(row.charges + Number(fine.amount));
+      const summaryKey = String(fine.fine_type_id || fine.name || 'fine');
+      let summary = row.fine_summary.find((item) => item.key === summaryKey);
+      if (!summary) {
+        summary = {
+          key: summaryKey,
+          fine_type_id: fine.fine_type_id || null,
+          name: fine.name || 'Fine',
+          count: 0,
+          amount: 0
+        };
+        row.fine_summary.push(summary);
+      }
+      summary.count += 1;
+      summary.amount = roundMoney(summary.amount + Number(fine.amount));
+    }
   }
   for (const adjustment of adjustments || []) {
     const adjustmentPeriod = transactionPeriod(adjustment);
@@ -146,6 +163,9 @@ function buildBalances(players, fines, adjustments, payments, period) {
   }
   for (const row of totals.values()) {
     row.balance = roundMoney(row.opening_balance + row.charges + row.adjustments - row.paid);
+    row.fine_summary = row.fine_summary
+      .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name))
+      .map(({ key, ...summary }) => summary);
   }
 
   return [...totals.values()].sort((left, right) => (
@@ -183,7 +203,7 @@ async function loadSnapshot(supabase, period) {
   ] = await Promise.all([
     supabase.from('players').select('id, name, active').eq('active', true).order('name'),
     supabase.from('fines')
-      .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)')
+      .select('player_id, monthly_period_id, fine_type_id, name, amount, occurred_at, monthly_period:monthly_periods(period_month)')
       .is('voided_at', null),
     supabase.from('financial_adjustments')
       .select('player_id, monthly_period_id, amount, occurred_at, monthly_period:monthly_periods(period_month)'),

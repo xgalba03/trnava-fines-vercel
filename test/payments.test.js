@@ -83,9 +83,14 @@ test('monthly balances combine fines, credits, and player-level payments', async
                 assert.equal(column, 'voided_at');
                 assert.equal(value, null);
                 return resolved([
-                  { player_id: 7, amount: 10, occurred_at: '2026-09-10T10:00:00Z' },
+                  {
+                    player_id: 7, fine_type_id: 3, name: 'Freeball',
+                    amount: 10, occurred_at: '2026-09-10T10:00:00Z'
+                  },
                   {
                     player_id: 7,
+                    fine_type_id: 3,
+                    name: 'Freeball',
                     amount: 1,
                     occurred_at: '2026-10-20T12:00:00Z',
                     monthly_period_id: 9,
@@ -159,6 +164,12 @@ test('monthly balances combine fines, credits, and player-level payments', async
     adjustments: -2,
     paid: 4,
     balance: 3,
+    fine_summary: [{
+      fine_type_id: 3,
+      name: 'Freeball',
+      count: 2,
+      amount: 11
+    }],
     settlement_status: 'overdue',
     effective_deadline: '2026-09-01',
     exception: null
