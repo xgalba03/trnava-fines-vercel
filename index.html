@@ -93,6 +93,10 @@
         padding: 0.75rem;
       }
 
+      html {
+        scroll-behavior: smooth;
+      }
+
       main {
         width: min(100%, 58rem);
         margin: 0 auto;
@@ -136,15 +140,16 @@
       #app-header {
         position: sticky;
         top: 0;
-        z-index: 10;
+        z-index: 20;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
-        padding: 0.75rem 0.25rem;
+        gap: 0.55rem 1rem;
+        padding: 0.75rem 0.25rem 0.55rem;
         background: var(--page-bg);
         backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--border);
       }
 
       .header-actions {
@@ -156,6 +161,56 @@
       .header-actions button {
         min-height: 2.35rem;
         padding: 0.4rem 0.65rem;
+      }
+
+      .top-nav {
+        display: flex;
+        flex: 0 0 100%;
+        gap: 0.35rem;
+        width: 100%;
+        padding: 0.05rem 0 0.15rem;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .top-nav::-webkit-scrollbar {
+        display: none;
+      }
+
+      .top-nav a {
+        flex: 0 0 auto;
+        padding: 0.42rem 0.68rem;
+        color: var(--muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 650;
+        line-height: 1;
+        text-decoration: none;
+      }
+
+      .top-nav a:hover,
+      .top-nav a:focus-visible {
+        color: var(--text);
+        border-color: var(--strong-border);
+      }
+
+      .top-nav a[aria-current="true"] {
+        color: var(--button-text);
+        background: var(--button-bg);
+        border-color: var(--button-bg);
+      }
+
+      #account-section,
+      #fines-section,
+      #analytics-section,
+      #event-section,
+      #obligation-section,
+      #objection-section {
+        scroll-margin-top: 8.5rem;
       }
 
       h1 {
@@ -771,6 +826,12 @@
           max-width: 7.5rem;
         }
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
     </style>
   </head>
   <body>
@@ -788,6 +849,14 @@
             <button id="admin-menu" class="secondary" type="button" hidden>Admin</button>
             <button id="logout" type="button" hidden>Log out</button>
           </div>
+          <nav class="top-nav" aria-label="Page sections">
+            <a href="#account-section" aria-current="true">Players</a>
+            <a href="#analytics-section">Stats</a>
+            <a href="#fines-section">Fines</a>
+            <a href="#event-section">Events</a>
+            <a href="#obligation-section">Obligations</a>
+            <a href="#objection-section">Objections</a>
+          </nav>
         </div>
         <section id="auth" hidden>
           <p>Admin access is required to manage fines.</p>
@@ -1100,6 +1169,8 @@
     </dialog>
     <script>
       const app = document.querySelector('#app');
+      const appHeader = document.querySelector('#app-header');
+      const topNavLinks = [...document.querySelectorAll('.top-nav a')];
       const themeToggle = document.querySelector('#theme-toggle');
       const auth = document.querySelector('#auth');
       const authForm = document.querySelector('#auth-form');
@@ -1194,6 +1265,42 @@
       app.insertBefore(accountSection, eventSection);
       app.insertBefore(analyticsSection, eventSection);
       app.insertBefore(finesSection, eventSection);
+
+      const navigableSections = topNavLinks
+        .map((link) => document.querySelector(link.hash))
+        .filter(Boolean);
+      let navigationFrame = 0;
+
+      function updateActiveNavigation() {
+        const marker = appHeader.getBoundingClientRect().bottom + 16;
+        let activeSection = navigableSections[0];
+        for (const section of navigableSections) {
+          if (section.getBoundingClientRect().top <= marker) activeSection = section;
+        }
+        for (const link of topNavLinks) {
+          if (link.hash === `#${activeSection.id}`) link.setAttribute('aria-current', 'true');
+          else link.removeAttribute('aria-current');
+        }
+      }
+
+      function queueNavigationUpdate() {
+        if (navigationFrame) return;
+        navigationFrame = requestAnimationFrame(() => {
+          navigationFrame = 0;
+          updateActiveNavigation();
+        });
+      }
+
+      topNavLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          topNavLinks.forEach((item) => item.removeAttribute('aria-current'));
+          link.setAttribute('aria-current', 'true');
+        });
+      });
+      window.addEventListener('scroll', queueNavigationUpdate, { passive: true });
+      window.addEventListener('resize', queueNavigationUpdate);
+      requestAnimationFrame(updateActiveNavigation);
+
       loginDialogContent.append(auth);
       adminDialogContent.append(
         fineEntry,
