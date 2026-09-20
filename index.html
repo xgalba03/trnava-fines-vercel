@@ -350,16 +350,93 @@
         max-height: 28rem;
       }
 
-      .balance-list {
-        max-height: 24rem;
-      }
-
       .balance-value {
         white-space: nowrap;
       }
 
       .balance-value.credit {
         color: var(--success);
+      }
+
+      .balance-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+      }
+
+      .balance-grid:empty::before {
+        grid-column: 1 / -1;
+        padding: 1rem 0;
+        color: var(--subtle);
+        content: attr(data-empty);
+        font-size: 0.9rem;
+      }
+
+      .balance-card,
+      .balance-card:first-child {
+        display: grid;
+        align-content: center;
+        gap: 0.2rem;
+        min-width: 0;
+        min-height: 4rem;
+        padding: 0.55rem;
+        background: var(--pill-bg);
+        border: 1px solid transparent;
+        border-radius: 0.65rem;
+      }
+
+      .balance-card.overdue {
+        background: var(--danger-bg);
+        border-color: var(--danger);
+      }
+
+      .balance-card.settled,
+      .balance-card.credit,
+      .balance-card.waived {
+        background: var(--success-bg);
+      }
+
+      .balance-player {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 0.78rem;
+        line-height: 1.15;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+
+      .balance-amount {
+        overflow: hidden;
+        font-size: clamp(1rem, 5vw, 1.35rem);
+        line-height: 1.1;
+        text-overflow: ellipsis;
+      }
+
+      .balance-state {
+        color: var(--muted);
+        font-size: 0.68rem;
+      }
+
+      .balance-card .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 0.2rem;
+      }
+
+      .balance-card .actions button {
+        min-width: 0;
+        padding-inline: 0.25rem;
+      }
+
+      .payments-history {
+        margin-top: 1rem;
+      }
+
+      .payments-history summary {
+        color: var(--muted);
+        cursor: pointer;
+        font-weight: 650;
       }
 
       .metric-grid {
@@ -593,6 +670,10 @@
 
         .analytics-details {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .balance-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
         }
       }
 
@@ -847,11 +928,11 @@
           <p>A submitted objection costs €1. If accepted, the original fine is voided and a €2 account credit is recorded.</p>
           <ul id="objections" class="scroll-list" data-empty="No objections submitted."></ul>
         </section>
-        <section id="fines-section" class="panel primary-panel">
+        <section id="fines-section" class="panel">
           <div class="section-heading">
             <div>
-              <h2>Recent fines</h2>
-              <span class="section-subtitle">Latest team activity</span>
+              <h2>Fine history</h2>
+              <span class="section-subtitle">Browse individual fine events</span>
             </div>
           </div>
           <div class="fine-filters" aria-label="Fine history filters">
@@ -908,11 +989,11 @@
           </div>
           <div id="analytics-months" class="bar-list"></div>
         </section>
-        <section id="account-section" class="panel">
+        <section id="account-section" class="panel primary-panel">
           <div class="section-heading">
             <div>
-              <h2>Monthly balances</h2>
-              <span class="section-subtitle">Fines and credits minus payments received</span>
+              <h2>Player balances</h2>
+              <span class="section-subtitle">Amount currently owed by each player</span>
             </div>
             <label class="month-control">
               <span>Month</span>
@@ -921,9 +1002,11 @@
           </div>
           <p id="settlement-summary" class="meta"></p>
           <p id="account-status" role="status"></p>
-          <ul id="balances" class="scroll-list balance-list" data-empty="No player balances available."></ul>
-          <h3>Payments received</h3>
-          <ul id="payments" class="scroll-list" data-empty="No payments recorded for this month."></ul>
+          <ul id="balances" class="balance-grid" data-empty="No player balances available."></ul>
+          <details class="payments-history">
+            <summary>Payments received</summary>
+            <ul id="payments" class="scroll-list" data-empty="No payments recorded for this month."></ul>
+          </details>
         </section>
       </section>
     </main>
@@ -1037,9 +1120,9 @@
       const closeAdmin = document.querySelector('#close-admin');
 
       // Keep the public dashboard focused while retaining all admin forms.
-      app.insertBefore(finesSection, eventSection);
-      app.insertBefore(analyticsSection, eventSection);
       app.insertBefore(accountSection, eventSection);
+      app.insertBefore(analyticsSection, eventSection);
+      app.insertBefore(finesSection, eventSection);
       loginDialogContent.append(auth);
       adminDialogContent.append(
         fineEntry,
@@ -1611,12 +1694,19 @@
       function renderBalances(items) {
         balanceList.replaceChildren(...items.map((balance) => {
           const item = document.createElement('li');
-          const copy = document.createElement('span');
-          copy.className = 'item-copy';
-          const title = document.createElement('strong');
-          title.textContent = balance.player_name;
-          const detail = document.createElement('span');
-          detail.className = 'meta';
+          const playerName = document.createElement('strong');
+          const amount = document.createElement('strong');
+          const state = document.createElement('span');
+          const balanceAmount = Number(balance.balance);
+          const settlementState = balance.settlement_status || 'due';
+          item.className = `balance-card ${settlementState}`;
+          playerName.className = 'balance-player';
+          amount.className = `balance-amount balance-value ${balanceAmount > 0 ? 'due' : 'credit'}`;
+          state.className = 'balance-state';
+          playerName.textContent = balance.player_name;
+          amount.textContent = balanceAmount < 0
+            ? `−€${Math.abs(balanceAmount).toFixed(2)}`
+            : `€${balanceAmount.toFixed(2)}`;
           const adjustmentText = Number(balance.adjustments) === 0
             ? ''
             : ` · adjustments ${Number(balance.adjustments) < 0 ? '−' : '+'}€${Math.abs(Number(balance.adjustments)).toFixed(2)}`;
@@ -1630,32 +1720,22 @@
               : balance.exception?.custom_deadline
                 ? ` · deadline ${dateOnlyLabel(balance.exception.custom_deadline)}`
                 : '';
-          detail.textContent = `${openingText}fines €${Number(balance.charges).toFixed(2)}${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}${exceptionText}`;
-          const statusBadge = document.createElement('span');
           const statusLabels = {
-            no_balance: 'No balance',
-            due: 'Payment due',
+            no_balance: 'No fines',
+            due: 'Due',
             overdue: 'Overdue',
-            settled: 'Settled',
-            credit: 'Account credit',
-            paused: 'Penalties paused',
-            waived: 'Penalties waived'
+            settled: 'Paid',
+            credit: 'Credit',
+            paused: 'Paused',
+            waived: 'Waived'
           };
-          statusBadge.className = `status-pill ${balance.settlement_status || 'due'}`;
-          statusBadge.textContent = statusLabels[balance.settlement_status] || 'Payment due';
-          copy.append(title, statusBadge, detail);
-
-          const actions = document.createElement('div');
-          actions.className = 'actions';
-          const value = document.createElement('strong');
-          value.className = `balance-value ${Number(balance.balance) > 0 ? 'due' : 'credit'}`;
-          value.textContent = Number(balance.balance) > 0
-            ? `€${Number(balance.balance).toFixed(2)} due`
-            : Number(balance.balance) < 0
-              ? `€${Math.abs(Number(balance.balance)).toFixed(2)} credit`
-              : 'Settled';
-          actions.append(value);
+          state.textContent = statusLabels[settlementState] || 'Due';
+          item.title = `${openingText}fines €${Number(balance.charges).toFixed(2)}`
+            + `${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}${exceptionText}`;
+          item.append(playerName, amount, state);
           if (isAdmin) {
+            const actions = document.createElement('div');
+            actions.className = 'actions';
             actions.append(actionButton('Record', () => {
               paymentForm.elements.player_id.value = String(balance.player_id);
               paymentForm.elements.period_month.value = balancePeriod.value;
@@ -1676,8 +1756,8 @@
               exceptionStatus.textContent = '';
               openAdminAt(exceptionEntry);
             }));
+            item.append(actions);
           }
-          item.append(copy, actions);
           return item;
         }));
       }
