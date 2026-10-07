@@ -286,6 +286,10 @@
         font-size: 0.82rem;
       }
 
+      .fine-note {
+        overflow-wrap: anywhere;
+      }
+
       .voided-item {
         opacity: 0.62;
       }
@@ -1693,8 +1697,10 @@
           const objection = related(fine.objection);
           const acceptedObjection = objection?.status === 'accepted';
           if (fine.voided_at || acceptedObjection) item.className = 'voided-item';
+          const copy = document.createElement('span');
           const description = document.createElement('span');
           const amount = document.createElement('strong');
+          copy.className = 'item-copy';
           const relatedPlayer = Array.isArray(fine.player) ? fine.player[0] : fine.player;
           const fineName = fine.name || fine.description;
           const quantityText = Number(fine.quantity) > 1 && fine.unit_name_snapshot
@@ -1715,6 +1721,13 @@
             : '';
           description.textContent = `${relatedPlayer?.name ? `${relatedPlayer.name}: ` : ''}`
             + `${fineName}${quantityText}${multiplierText}${overrideText}${editText}${voidText}`;
+          copy.append(description);
+          if (String(fine.note || '').trim()) {
+            const note = document.createElement('span');
+            note.className = 'meta fine-note';
+            note.textContent = `Note: ${fine.note}`;
+            copy.append(note);
+          }
           amount.textContent = `€${Number(fine.amount).toFixed(2)}`;
           const right = document.createElement('div');
           right.className = 'actions';
@@ -1767,7 +1780,7 @@
               await Promise.all([loadFines(), loadPayments(), loadObjections(), loadAnalytics()]);
             }));
           }
-          item.append(description, right);
+          item.append(copy, right);
           return item;
         }));
       }
