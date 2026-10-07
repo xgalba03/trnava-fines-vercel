@@ -1220,7 +1220,7 @@
           </div>
           <div class="analytics-details">
             <div>
-              <h3>Poradie hráčov</h3>
+              <h3>Rebríček</h3>
               <ul id="analytics-leaderboard" class="scroll-list analytics-list" data-empty="V tejto sezóne nie sú žiadne pokuty."></ul>
             </div>
             <div>
@@ -2231,7 +2231,7 @@
         if (monthlyPeriod?.club_payment_date && monthlyPeriod?.payment_deadline) {
           settlementSummary.textContent = `Platba od klubu prijatá ${dateOnlyLabel(monthlyPeriod.club_payment_date)} · Termín hráčov ${dateOnlyLabel(monthlyPeriod.payment_deadline)}`;
         } else if (monthlyPeriod?.season_id) {
-          settlementSummary.textContent = 'Dátum platby od klubu ani termín hráčov zatiaľ pre tento mesiac nie sú nastavené.';
+          settlementSummary.textContent = 'Nedostali sme výplaty, zatiaľ nie je dátum splatnosti.';
         } else {
           settlementSummary.textContent = 'Tento mesiac je mimo nastavených sezón.';
         }
