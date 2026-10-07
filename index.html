@@ -286,7 +286,7 @@
         font-size: 0.82rem;
       }
 
-      .fine-note {
+      .fine-detail {
         overflow-wrap: anywhere;
       }
 
@@ -1722,12 +1722,11 @@
           description.textContent = `${relatedPlayer?.name ? `${relatedPlayer.name}: ` : ''}`
             + `${fineName}${quantityText}${multiplierText}${overrideText}${editText}${voidText}`;
           copy.append(description);
-          if (String(fine.note || '').trim()) {
-            const note = document.createElement('span');
-            note.className = 'meta fine-note';
-            note.textContent = `Note: ${fine.note}`;
-            copy.append(note);
-          }
+          const detail = document.createElement('span');
+          const fineNote = String(fine.note || '').trim();
+          detail.className = 'meta fine-detail';
+          detail.textContent = `${dateLabel(fine.occurred_at)}${fineNote ? ` · Note: ${fineNote}` : ''}`;
+          copy.append(detail);
           amount.textContent = `€${Number(fine.amount).toFixed(2)}`;
           const right = document.createElement('div');
           right.className = 'actions';
