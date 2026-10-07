@@ -35,6 +35,18 @@
         --danger: #a52714;
         --danger-bg: #fce8e6;
         --pill-bg: #edf1f4;
+        --players-accent: #1d4ed8;
+        --players-tint: #eff6ff;
+        --stats-accent: #6d28d9;
+        --stats-tint: #f5f3ff;
+        --fines-accent: #a64b08;
+        --fines-tint: #fff8e6;
+        --events-accent: #0f766e;
+        --events-tint: #ecfdf9;
+        --obligations-accent: #c2410c;
+        --obligations-tint: #fff4e8;
+        --objections-accent: #be123c;
+        --objections-tint: #fff1f2;
         background: var(--page-bg);
         color: var(--text);
       }
@@ -60,6 +72,18 @@
         --danger: #f28b82;
         --danger-bg: #4a211d;
         --pill-bg: #293641;
+        --players-accent: #93c5fd;
+        --players-tint: #172b45;
+        --stats-accent: #c4b5fd;
+        --stats-tint: #292340;
+        --fines-accent: #fcd34d;
+        --fines-tint: #352c19;
+        --events-accent: #5eead4;
+        --events-tint: #17342f;
+        --obligations-accent: #fdba74;
+        --obligations-tint: #38271d;
+        --objections-accent: #fda4af;
+        --objections-tint: #3a2029;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -84,6 +108,18 @@
           --danger: #f28b82;
           --danger-bg: #4a211d;
           --pill-bg: #293641;
+          --players-accent: #93c5fd;
+          --players-tint: #172b45;
+          --stats-accent: #c4b5fd;
+          --stats-tint: #292340;
+          --fines-accent: #fcd34d;
+          --fines-tint: #352c19;
+          --events-accent: #5eead4;
+          --events-tint: #17342f;
+          --obligations-accent: #fdba74;
+          --obligations-tint: #38271d;
+          --objections-accent: #fda4af;
+          --objections-tint: #3a2029;
         }
       }
 
@@ -182,7 +218,7 @@
       .top-nav a {
         flex: 0 0 auto;
         padding: 0.42rem 0.68rem;
-        color: var(--muted);
+        color: var(--nav-accent, var(--muted));
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 999px;
@@ -199,9 +235,40 @@
       }
 
       .top-nav a[aria-current="true"] {
-        color: var(--button-text);
-        background: var(--button-bg);
-        border-color: var(--button-bg);
+        color: var(--nav-accent, var(--text));
+        background: var(--nav-tint, var(--pill-bg));
+        border-color: var(--nav-accent, var(--strong-border));
+        box-shadow: inset 0 -2px 0 var(--nav-accent, var(--strong-border));
+      }
+
+      .top-nav a[href="#account-section"] {
+        --nav-accent: var(--players-accent);
+        --nav-tint: var(--players-tint);
+      }
+
+      .top-nav a[href="#analytics-section"] {
+        --nav-accent: var(--stats-accent);
+        --nav-tint: var(--stats-tint);
+      }
+
+      .top-nav a[href="#fines-section"] {
+        --nav-accent: var(--fines-accent);
+        --nav-tint: var(--fines-tint);
+      }
+
+      .top-nav a[href="#event-section"] {
+        --nav-accent: var(--events-accent);
+        --nav-tint: var(--events-tint);
+      }
+
+      .top-nav a[href="#obligation-section"] {
+        --nav-accent: var(--obligations-accent);
+        --nav-tint: var(--obligations-tint);
+      }
+
+      .top-nav a[href="#objection-section"] {
+        --nav-accent: var(--objections-accent);
+        --nav-tint: var(--objections-tint);
       }
 
       #account-section,
@@ -244,14 +311,50 @@
       .panel {
         min-width: 0;
         padding: 1rem;
-        background: var(--surface);
+        background: linear-gradient(180deg, var(--section-tint, var(--surface)) 0, var(--surface) 7rem);
         border: 1px solid var(--border);
+        border-top: 0.3rem solid var(--section-accent, var(--strong-border));
         border-radius: 0.75rem;
         box-shadow: 0 4px 14px var(--shadow);
       }
 
       .primary-panel {
         border-color: var(--strong-border);
+        border-top-color: var(--section-accent, var(--strong-border));
+      }
+
+      .panel h2 {
+        color: var(--section-accent, var(--text));
+      }
+
+      #account-section {
+        --section-accent: var(--players-accent);
+        --section-tint: var(--players-tint);
+      }
+
+      #analytics-section {
+        --section-accent: var(--stats-accent);
+        --section-tint: var(--stats-tint);
+      }
+
+      #fines-section {
+        --section-accent: var(--fines-accent);
+        --section-tint: var(--fines-tint);
+      }
+
+      #event-section {
+        --section-accent: var(--events-accent);
+        --section-tint: var(--events-tint);
+      }
+
+      #obligation-section {
+        --section-accent: var(--obligations-accent);
+        --section-tint: var(--obligations-tint);
+      }
+
+      #objection-section {
+        --section-accent: var(--objections-accent);
+        --section-tint: var(--objections-tint);
       }
 
       .section-heading,
