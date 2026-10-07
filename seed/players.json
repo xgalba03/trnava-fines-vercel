@@ -13,6 +13,8 @@
     { "name": "Šimon", "jerseyNumber": 10, "active": true },
     { "name": "Roman", "jerseyNumber": null, "active": true },
     { "name": "Peter", "jerseyNumber": null, "active": true },
-    { "name": "Braňo", "jerseyNumber": null, "active": true }
+    { "name": "Braňo", "jerseyNumber": null, "active": true },
+    { "name": "Matúš", "jerseyNumber": null, "active": true },
+    { "name": "Maxo", "jerseyNumber": null, "active": true }
   ]
 }
