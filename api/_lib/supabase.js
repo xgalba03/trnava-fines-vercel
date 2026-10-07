@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 function createSupabaseClient(token) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error('Missing Supabase environment variable.');
+  if (!url || !key) throw new Error('Chýba premenná prostredia Supabase.');
   const options = token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {};
   return createClient(url, key, options);
 }
@@ -11,7 +11,7 @@ function createSupabaseClient(token) {
 function createServiceClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Missing server-only Supabase environment variable.');
+  if (!url || !key) throw new Error('Chýba serverová premenná prostredia Supabase.');
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
@@ -21,13 +21,13 @@ function getToken(request) {
 
 async function requireAdmin(request) {
   const token = getToken(request);
-  if (!token) return { error: 'Admin login required.', status: 401 };
+  if (!token) return { error: 'Vyžaduje sa prihlásenie správcu.', status: 401 };
   const supabase = createSupabaseClient(token);
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) return { error: 'Your session has expired.', status: 401 };
+  if (error || !data?.user) return { error: 'Platnosť relácie vypršala.', status: 401 };
   const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   if (!adminEmail || data.user.email?.trim().toLowerCase() !== adminEmail) {
-    return { error: 'Admin access required.', status: 403 };
+    return { error: 'Vyžaduje sa prístup správcu.', status: 403 };
   }
   return { supabase, user: data.user };
 }

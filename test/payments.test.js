@@ -296,7 +296,7 @@ test('admin reverses a payment while preserving its record', async () => {
 
   assert.equal(response.statusCode, 200);
   assert.equal(reversedValues.reversed_by, 'admin-id');
-  assert.equal(reversedValues.reversal_reason, 'No reason provided.');
+  assert.equal(reversedValues.reversal_reason, 'Dôvod nebol uvedený.');
   assert.match(reversedValues.reversed_at, /^\d{4}-\d{2}-\d{2}T/);
 });
 

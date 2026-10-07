@@ -74,7 +74,7 @@ async function syncObligationTypes(supabase) {
 async function syncBirthdays(supabase, playersByName, userId) {
   for (const birthday of birthdaysSeed.birthdays) {
     const player = playersByName.get(playerKey(birthday.playerName));
-    if (!player) throw new Error(`Birthday references unknown player: ${birthday.playerName}.`);
+    if (!player) throw new Error(`Narodeniny odkazujú na neznámeho hráča: ${birthday.playerName}.`);
     const { error } = await supabase.from('players').update({
       birth_month: birthday.month,
       birth_day: birthday.day,
@@ -117,7 +117,7 @@ async function syncCalendar(supabase, playersByName, userId) {
       && event.status === 'scheduled';
     const status = preserveAdminStatus ? current.status : event.status;
     const cancellationReason = status === 'cancelled'
-      ? (event.cancellationReason || current?.cancellation_reason || 'Cancelled by administrator.')
+      ? (event.cancellationReason || current?.cancellation_reason || 'Zrušené správcom.')
       : null;
     const values = {
       season_id: season.id,
@@ -146,7 +146,7 @@ async function syncCalendar(supabase, playersByName, userId) {
     if (event.attendanceScope === 'partial_team') {
       const participantRows = event.playerNames.map((name) => {
         const player = playersByName.get(playerKey(name));
-        if (!player) throw new Error(`Event ${event.code} references unknown player: ${name}.`);
+        if (!player) throw new Error(`Udalosť ${event.code} odkazuje na neznámeho hráča: ${name}.`);
         return { event_id: saved.id, player_id: player.id };
       });
       const { error: participantError } = await supabase.from('team_event_players').insert(participantRows);
@@ -164,7 +164,7 @@ async function syncCalendar(supabase, playersByName, userId) {
       || new Date(existing.starts_at) < now) continue;
     const { error } = await supabase.from('team_events').update({
       status: 'cancelled',
-      cancellation_reason: 'Removed from the recurring seed schedule.',
+      cancellation_reason: 'Odstránené z opakujúceho sa zdrojového rozvrhu.',
       cancelled_at: new Date().toISOString(),
       updated_by: userId
     }).eq('id', existing.id);
@@ -182,7 +182,7 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
     const auth = await requireAdmin(request);
     if (auth.error) return response.status(auth.status).json({ error: auth.error });
@@ -204,7 +204,7 @@ module.exports = async function handler(request, response) {
       : 0;
 
     return response.status(200).json({
-      message: 'Seed files were synced to Supabase.',
+      message: 'Zdrojové súbory boli synchronizované so Supabase.',
       counts: {
         players: playersSeed.players.length,
         fineTypes,
@@ -218,6 +218,6 @@ module.exports = async function handler(request, response) {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Unable to sync seed files.' });
+    return response.status(500).json({ error: error.message || 'Zdrojové súbory sa nepodarilo synchronizovať.' });
   }
 };

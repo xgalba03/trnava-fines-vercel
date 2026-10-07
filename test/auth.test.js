@@ -99,7 +99,7 @@ test('a non-admin email is rejected before contacting Supabase', async () => {
   }, response);
 
   assert.equal(response.statusCode, 401);
-  assert.equal(response.body.error, 'Invalid email or password.');
+  assert.equal(response.body.error, 'Neplatný e-mail alebo heslo.');
 });
 
 test('the setup link cannot create a new account', async () => {

@@ -2,7 +2,7 @@ const { createSupabaseClient, requireAdmin } = require('./_lib/supabase');
 
 function positiveId(value, field) {
   const id = Number(value);
-  if (!Number.isSafeInteger(id) || id <= 0) throw new Error(`${field} is required.`);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error(`Pole ${field} je povinné.`);
   return id;
 }
 
@@ -45,7 +45,7 @@ async function eligibleEvent(supabase, eventId) {
   if (error) throw error;
   if (!data || data.status !== 'scheduled' || data.attendance_scope !== 'full_team'
     || !['practice', 'match'].includes(data.event_type)) {
-    throw new Error('Obligations can only be assigned to a scheduled full-team practice or match.');
+    throw new Error('Povinnosti možno priradiť iba k naplánovanému tréningu alebo zápasu celého tímu.');
   }
   return data;
 }
@@ -63,7 +63,7 @@ module.exports = async function handler(request, response) {
     }
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'GET, POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
 
     const auth = await requireAdmin(request);
@@ -73,15 +73,15 @@ module.exports = async function handler(request, response) {
     const action = String(body.action || 'create');
 
     if (action === 'create' || action === 'update') {
-      const playerId = positiveId(body.player_id, 'Player');
-      const typeId = positiveId(body.obligation_type_id, 'Obligation type');
-      const eventId = body.scheduled_event_id ? positiveId(body.scheduled_event_id, 'Event') : null;
+      const playerId = positiveId(body.player_id, 'hráč');
+      const typeId = positiveId(body.obligation_type_id, 'typ povinnosti');
+      const eventId = body.scheduled_event_id ? positiveId(body.scheduled_event_id, 'udalosť') : null;
       const event = await eligibleEvent(supabase, eventId);
-      const seasonId = body.season_id ? positiveId(body.season_id, 'Season') : event?.season_id;
-      if (!seasonId) return response.status(400).json({ error: 'A season or scheduled event is required.' });
+      const seasonId = body.season_id ? positiveId(body.season_id, 'sezóna') : event?.season_id;
+      if (!seasonId) return response.status(400).json({ error: 'Je potrebná sezóna alebo naplánovaná udalosť.' });
       const triggerDate = body.trigger_date || new Date().toISOString().slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(triggerDate)) {
-        return response.status(400).json({ error: 'Enter a valid trigger date.' });
+        return response.status(400).json({ error: 'Zadajte platný dátum vzniku.' });
       }
       const values = {
         player_id: playerId,
@@ -92,20 +92,20 @@ module.exports = async function handler(request, response) {
         due_at: event?.starts_at || (body.due_at ? new Date(body.due_at).toISOString() : null),
         status: 'planned',
         schedule_mode: 'manual',
-        scheduling_note: String(body.note || '').trim() || 'Created manually by administrator.',
+        scheduling_note: String(body.note || '').trim() || 'Manuálne vytvorené správcom.',
         updated_by: user.id
       };
       let previous = null;
       let result;
       if (action === 'update') {
-        const obligationId = positiveId(body.obligation_id, 'Obligation');
+        const obligationId = positiveId(body.obligation_id, 'povinnosť');
         const previousResult = await supabase
           .from('player_obligations')
           .select('id, scheduled_event_id, due_at')
           .eq('id', obligationId)
           .maybeSingle();
         if (previousResult.error) throw previousResult.error;
-        if (!previousResult.data) return response.status(404).json({ error: 'Obligation not found.' });
+        if (!previousResult.data) return response.status(404).json({ error: 'Povinnosť sa nenašla.' });
         previous = previousResult.data;
         result = await supabase
           .from('player_obligations')
@@ -129,20 +129,20 @@ module.exports = async function handler(request, response) {
         to_event_id: data.scheduled_event_id,
         old_due_at: previous?.due_at || null,
         new_due_at: data.due_at,
-        note: String(body.note || '').trim() || `${action === 'create' ? 'Created' : 'Edited'} manually by administrator.`,
+        note: String(body.note || '').trim() || `${action === 'create' ? 'Vytvorené' : 'Upravené'} manuálne správcom.`,
         created_by: user.id
       });
       return response.status(action === 'create' ? 201 : 200).json(await obligationPayload(supabase));
     }
 
-    const obligationId = positiveId(body.obligation_id, 'Obligation');
+    const obligationId = positiveId(body.obligation_id, 'povinnosť');
     const { data: current, error: currentError } = await supabase
       .from('player_obligations')
       .select('id, status, scheduled_event_id, due_at')
       .eq('id', obligationId)
       .maybeSingle();
     if (currentError) throw currentError;
-    if (!current) return response.status(404).json({ error: 'Obligation not found.' });
+    if (!current) return response.status(404).json({ error: 'Povinnosť sa nenašla.' });
     const note = String(body.note || '').trim() || null;
     let values;
     let eventType;
@@ -151,11 +151,11 @@ module.exports = async function handler(request, response) {
       values = { status: 'fulfilled', fulfilled_at: new Date().toISOString(), fulfilled_note: note, updated_by: user.id };
       eventType = 'fulfilled';
     } else if (action === 'cancel') {
-      const cancellationReason = note || 'No reason provided.';
+      const cancellationReason = note || 'Dôvod nebol uvedený.';
       values = { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: user.id, cancellation_reason: cancellationReason, updated_by: user.id };
       eventType = 'cancelled';
     } else if (action === 'waive') {
-      const waiverReason = note || 'No reason provided.';
+      const waiverReason = note || 'Dôvod nebol uvedený.';
       values = { status: 'waived', waived_at: new Date().toISOString(), waived_by: user.id, waiver_reason: waiverReason, updated_by: user.id };
       eventType = 'waived';
     } else if (action === 'reopen') {
@@ -166,7 +166,7 @@ module.exports = async function handler(request, response) {
       };
       eventType = 'reopened';
     } else if (action === 'reschedule') {
-      const eventId = positiveId(body.scheduled_event_id, 'Event');
+      const eventId = positiveId(body.scheduled_event_id, 'udalosť');
       const event = await eligibleEvent(supabase, eventId);
       values = {
         scheduled_event_id: event.id,
@@ -174,12 +174,12 @@ module.exports = async function handler(request, response) {
         season_id: event.season_id,
         status: 'planned',
         schedule_mode: 'manual',
-        scheduling_note: note || 'Rescheduled manually by administrator.',
+        scheduling_note: note || 'Manuálne presunuté správcom.',
         updated_by: user.id
       };
       eventType = 'rescheduled';
     } else {
-      return response.status(400).json({ error: 'Unknown obligation action.' });
+      return response.status(400).json({ error: 'Neznáma akcia povinnosti.' });
     }
 
     const { error } = await supabase.from('player_obligations').update(values).eq('id', obligationId);
@@ -197,7 +197,7 @@ module.exports = async function handler(request, response) {
     return response.status(200).json(await obligationPayload(supabase));
   } catch (error) {
     console.error(error);
-    const status = /required|valid|only be assigned/i.test(error.message || '') ? 400 : 500;
-    return response.status(status).json({ error: error.message || 'Unable to manage obligations.' });
+    const status = /povinné|platný|možno priradiť/i.test(error.message || '') ? 400 : 500;
+    return response.status(status).json({ error: error.message || 'Povinnosti sa nepodarilo spravovať.' });
   }
 };

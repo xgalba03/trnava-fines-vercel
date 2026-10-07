@@ -74,7 +74,7 @@ function buildAnalytics({ season, players = [], fines = [], adjustments = [], pa
       const offenceKey = String(fine.fine_type_id || fine.name);
       const offence = offences.get(offenceKey) || {
         fine_type_id: fine.fine_type_id,
-        name: fineType?.name || fine.name || 'Unknown fine',
+        name: fineType?.name || fine.name || 'Neznáma pokuta',
         category: fineType?.category || fine.category_snapshot || 'Other',
         count: 0,
         amount: 0
@@ -149,12 +149,12 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method !== 'GET') {
       response.setHeader('Allow', 'GET');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
 
     const requestedSeasonId = request.query?.season ? Number(request.query.season) : null;
     if (requestedSeasonId !== null && (!Number.isSafeInteger(requestedSeasonId) || requestedSeasonId <= 0)) {
-      return response.status(400).json({ error: 'Choose a valid season.' });
+      return response.status(400).json({ error: 'Vyberte platnú sezónu.' });
     }
 
     const supabase = createSupabaseClient();
@@ -167,7 +167,7 @@ module.exports = async function handler(request, response) {
       ? (seasons || []).find((season) => Number(season.id) === requestedSeasonId)
       : (seasons || []).find((season) => season.active) || seasons?.[0];
     if (requestedSeasonId && !selectedSeason) {
-      return response.status(404).json({ error: 'Season not found.' });
+      return response.status(404).json({ error: 'Sezóna sa nenašla.' });
     }
     if (!selectedSeason) {
       return response.status(200).json({ seasons: seasons || [], selected_season: null, analytics: null });
@@ -204,7 +204,7 @@ module.exports = async function handler(request, response) {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Unable to load analytics.' });
+    return response.status(500).json({ error: error.message || 'Štatistiky sa nepodarilo načítať.' });
   }
 };
 

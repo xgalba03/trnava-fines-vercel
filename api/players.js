@@ -4,7 +4,7 @@ function getClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
   if (!url || !key) {
-    throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variable.');
+    throw new Error('Chýba premenná prostredia SUPABASE_URL alebo SUPABASE_ANON_KEY.');
   }
   return createClient(url, key);
 }
@@ -13,7 +13,7 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method !== 'GET') {
       response.setHeader('Allow', 'GET');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
 
     const supabase = getClient();
@@ -27,6 +27,6 @@ module.exports = async function handler(request, response) {
     return response.status(200).json({ players });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Unable to load players.' });
+    return response.status(500).json({ error: error.message || 'Hráčov sa nepodarilo načítať.' });
   }
 };

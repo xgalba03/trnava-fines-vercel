@@ -7,7 +7,7 @@ function cleanText(value) {
 
 function positiveId(value, field) {
   const id = Number(value);
-  if (!Number.isSafeInteger(id) || id <= 0) throw new Error(`${field} is required.`);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error(`Pole ${field} je povinné.`);
   return id;
 }
 
@@ -43,7 +43,7 @@ module.exports = async function handler(request, response) {
 
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'GET, POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
 
     const auth = await requireAdmin(request);
@@ -53,8 +53,8 @@ module.exports = async function handler(request, response) {
     const action = String(body.action || 'save');
 
     if (action === 'cancel') {
-      const eventId = positiveId(body.event_id, 'Event');
-      const cancellationReason = cleanText(body.cancellation_reason) || 'Cancelled by administrator.';
+      const eventId = positiveId(body.event_id, 'udalosť');
+      const cancellationReason = cleanText(body.cancellation_reason) || 'Zrušené správcom.';
       const { error } = await supabase
         .from('team_events')
         .update({
@@ -68,9 +68,9 @@ module.exports = async function handler(request, response) {
       return response.status(200).json(await eventPayload(supabase));
     }
 
-    if (action !== 'save') return response.status(400).json({ error: 'Unknown event action.' });
-    const eventId = body.event_id ? positiveId(body.event_id, 'Event') : null;
-    const seasonId = positiveId(body.season_id, 'Season');
+    if (action !== 'save') return response.status(400).json({ error: 'Neznáma akcia udalosti.' });
+    const eventId = body.event_id ? positiveId(body.event_id, 'udalosť') : null;
+    const seasonId = positiveId(body.season_id, 'sezóna');
     const code = cleanText(body.code);
     const name = cleanText(body.name);
     const eventType = String(body.event_type || 'practice');
@@ -79,28 +79,28 @@ module.exports = async function handler(request, response) {
     const startsAt = new Date(body.starts_at);
     const endsAt = body.ends_at ? new Date(body.ends_at) : null;
     if (!code || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
-      return response.status(400).json({ error: 'Use a stable lowercase event code with hyphens.' });
+      return response.status(400).json({ error: 'Použite stály kód udalosti s malými písmenami a spojovníkmi.' });
     }
-    if (!name) return response.status(400).json({ error: 'Event name is required.' });
+    if (!name) return response.status(400).json({ error: 'Názov udalosti je povinný.' });
     if (!['practice', 'match', 'team_dinner', 'other'].includes(eventType)) {
-      return response.status(400).json({ error: 'Invalid event type.' });
+      return response.status(400).json({ error: 'Neplatný typ udalosti.' });
     }
     if (!['full_team', 'partial_team'].includes(attendanceScope)) {
-      return response.status(400).json({ error: 'Invalid attendance scope.' });
+      return response.status(400).json({ error: 'Neplatný rozsah účasti.' });
     }
     if (!['scheduled', 'cancelled', 'completed'].includes(eventStatus)) {
-      return response.status(400).json({ error: 'Invalid event status.' });
+      return response.status(400).json({ error: 'Neplatný stav udalosti.' });
     }
     if (Number.isNaN(startsAt.getTime()) || (endsAt && (Number.isNaN(endsAt.getTime()) || endsAt <= startsAt))) {
-      return response.status(400).json({ error: 'Enter a valid event start and optional later end.' });
+      return response.status(400).json({ error: 'Zadajte platný začiatok a voliteľný neskorší koniec udalosti.' });
     }
 
     const playerIds = [...new Set((body.player_ids || []).map(Number))];
     if (playerIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
-      return response.status(400).json({ error: 'Invalid event player list.' });
+      return response.status(400).json({ error: 'Neplatný zoznam hráčov udalosti.' });
     }
     if (attendanceScope === 'partial_team' && !playerIds.length) {
-      return response.status(400).json({ error: 'Choose at least one player for a partial-team event.' });
+      return response.status(400).json({ error: 'Pre udalosť časti tímu vyberte aspoň jedného hráča.' });
     }
 
     const values = {
@@ -115,7 +115,7 @@ module.exports = async function handler(request, response) {
       location: cleanText(body.location),
       notes: cleanText(body.notes),
       cancellation_reason: eventStatus === 'cancelled'
-        ? (cleanText(body.cancellation_reason) || 'Cancelled by administrator.')
+        ? (cleanText(body.cancellation_reason) || 'Zrušené správcom.')
         : null,
       cancelled_at: eventStatus === 'cancelled' ? new Date().toISOString() : null,
       updated_by: user.id
@@ -138,6 +138,6 @@ module.exports = async function handler(request, response) {
     return response.status(eventId ? 200 : 201).json(await eventPayload(supabase));
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Unable to manage team events.' });
+    return response.status(500).json({ error: error.message || 'Tímové udalosti sa nepodarilo spravovať.' });
   }
 };

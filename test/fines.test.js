@@ -421,7 +421,7 @@ test('an admin can edit an active manually entered fine', async () => {
   }, response);
 
   assert.equal(response.statusCode, 200);
-  assert.equal(response.body.message, 'Fine updated.');
+  assert.equal(response.body.message, 'Pokuta bola upravená.');
   assert.equal(updatedFine.user_id, undefined);
   assert.equal(updatedFine.updated_by, 'admin-id');
   assert.equal(updatedFine.player_id, 7);
@@ -475,9 +475,9 @@ test('voiding a fine keeps it and records who voided it and why', async () => {
   }, response);
 
   assert.equal(response.statusCode, 200);
-  assert.equal(response.body.message, 'Fine voided. The original record was kept.');
+  assert.equal(response.body.message, 'Pokuta bola zrušená. Pôvodný záznam zostal zachovaný.');
   assert.equal(voidUpdate.voided_by, 'admin-id');
   assert.equal(voidUpdate.updated_by, 'admin-id');
-  assert.equal(voidUpdate.void_reason, 'No reason provided.');
+  assert.equal(voidUpdate.void_reason, 'Dôvod nebol uvedený.');
   assert.match(voidUpdate.voided_at, /^\d{4}-\d{2}-\d{2}T/);
 });

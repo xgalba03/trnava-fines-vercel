@@ -113,7 +113,7 @@ function buildLatePaymentRows({
           base_amount: amount,
           calculated_amount: amount,
           amount_overridden: false,
-          note: `Automatic daily penalty for overdue ${periodMonth} settlement.`,
+          note: `Automatické denné penále za neuhradené zúčtovanie za ${periodMonth}.`,
           occurred_at: `${chargeDate}T12:00:00Z`,
           type: 'late_payment',
           source: 'automatic',
@@ -135,7 +135,7 @@ async function processLatePayments(supabase, today, settings) {
   if (!settings.latePenaltiesEnabled) return { generated: 0, disabled: true };
   const amount = Number(settings.dailyLatePaymentFine);
   if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error('The daily late-payment fine setting must be positive.');
+    throw new Error('Denná pokuta za oneskorenú platbu musí byť kladná.');
   }
 
   const [

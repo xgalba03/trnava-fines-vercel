@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 function getClient(token) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variable.');
+  if (!url || !key) throw new Error('Chýba premenná prostredia SUPABASE_URL alebo SUPABASE_ANON_KEY.');
 
   return createClient(url, key, {
     auth: {
@@ -18,7 +18,7 @@ function getClient(token) {
 function getAdminClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable.');
+  if (!url || !key) throw new Error('Chýba premenná prostredia SUPABASE_URL alebo SUPABASE_SERVICE_ROLE_KEY.');
 
   return createClient(url, key, {
     auth: {
@@ -50,16 +50,16 @@ function publicSession(session) {
 
 function methodNotAllowed(response, methods) {
   response.setHeader('Allow', methods.join(', '));
-  return response.status(405).json({ error: 'Method not allowed.' });
+  return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
 }
 
 async function validateAdmin(token) {
-  if (!token) return { error: 'Admin login required.' };
+  if (!token) return { error: 'Vyžaduje sa prihlásenie správcu.' };
 
   const supabase = getClient(token);
   const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) return { error: 'Your session has expired.' };
-  if (!isAdmin(data.user)) return { error: 'Admin access required.', forbidden: true };
+  if (error || !data?.user) return { error: 'Platnosť relácie vypršala.' };
+  if (!isAdmin(data.user)) return { error: 'Vyžaduje sa prístup správcu.', forbidden: true };
   return { supabase, user: data.user };
 }
 
@@ -93,12 +93,12 @@ module.exports = async function handler(request, response) {
 
     if (action === 'refresh') {
       const refreshToken = request.body?.refresh_token;
-      if (!refreshToken) return response.status(401).json({ error: 'Your session has expired.' });
+      if (!refreshToken) return response.status(401).json({ error: 'Platnosť relácie vypršala.' });
 
       const supabase = getClient();
       const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
       if (error || !data?.session || !isAdmin(data.user)) {
-        return response.status(401).json({ error: 'Your session has expired.' });
+        return response.status(401).json({ error: 'Platnosť relácie vypršala.' });
       }
       return response.status(200).json({ session: publicSession(data.session) });
     }
@@ -106,7 +106,7 @@ module.exports = async function handler(request, response) {
     if (action === 'set_password') {
       const password = String(request.body?.password || '');
       if (password.length < 12) {
-        return response.status(400).json({ error: 'Use a password with at least 12 characters.' });
+        return response.status(400).json({ error: 'Použite heslo s najmenej 12 znakmi.' });
       }
 
       const result = await validateAdmin(getToken(request));
@@ -117,18 +117,18 @@ module.exports = async function handler(request, response) {
       const admin = getAdminClient();
       const { error } = await admin.auth.admin.updateUserById(result.user.id, { password });
       if (error) return response.status(400).json({ error: error.message });
-      return response.status(200).json({ message: 'Password saved. You can use it for future logins.' });
+      return response.status(200).json({ message: 'Heslo bolo uložené. Môžete ho používať pri budúcich prihláseniach.' });
     }
 
     const email = String(request.body?.email || '').trim();
     if (!email || email.toLowerCase() !== process.env.ADMIN_EMAIL?.trim().toLowerCase()) {
-      return response.status(401).json({ error: 'Invalid email or password.' });
+      return response.status(401).json({ error: 'Neplatný e-mail alebo heslo.' });
     }
 
     if (action === 'magic_link') {
       const redirectUrl = process.env.SITE_URL;
       if (!redirectUrl?.startsWith('https://')) {
-        throw new Error('SITE_URL must contain the production HTTPS URL.');
+        throw new Error('SITE_URL musí obsahovať produkčnú HTTPS adresu.');
       }
 
       const supabase = getClient();
@@ -140,27 +140,27 @@ module.exports = async function handler(request, response) {
         }
       });
       if (error) return response.status(400).json({ error: error.message });
-      return response.status(200).json({ message: 'Check your email for the one-time setup link.' });
+      return response.status(200).json({ message: 'Skontrolujte si e-mail, poslali sme vám jednorazový odkaz na nastavenie.' });
     }
 
-    if (action !== 'login') return response.status(400).json({ error: 'Unknown authentication action.' });
+    if (action !== 'login') return response.status(400).json({ error: 'Neznáma akcia overenia.' });
 
     const password = String(request.body?.password || '');
-    if (!password) return response.status(401).json({ error: 'Invalid email or password.' });
+    if (!password) return response.status(401).json({ error: 'Neplatný e-mail alebo heslo.' });
 
     const supabase = getClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data?.session || !isAdmin(data.user)) {
       if (data?.session) await supabase.auth.signOut({ scope: 'local' });
-      return response.status(401).json({ error: 'Invalid email or password.' });
+      return response.status(401).json({ error: 'Neplatný e-mail alebo heslo.' });
     }
 
     return response.status(200).json({
       session: publicSession(data.session),
-      message: 'Logged in.'
+      message: 'Prihlásenie bolo úspešné.'
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Authentication failed.' });
+    return response.status(500).json({ error: error.message || 'Overenie zlyhalo.' });
   }
 };

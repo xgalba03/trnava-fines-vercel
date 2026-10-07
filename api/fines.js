@@ -4,7 +4,7 @@ const { randomUUID } = require('node:crypto');
 function getClient(key, token) {
   const url = process.env.SUPABASE_URL;
   if (!url || !key) {
-    throw new Error('Missing Supabase environment variable.');
+    throw new Error('Chýba premenná prostredia Supabase.');
   }
   const options = token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {};
   return createClient(url, key, options);
@@ -67,9 +67,9 @@ module.exports = async function handler(request, response) {
         supabase = getClient(process.env.SUPABASE_ANON_KEY, token);
         const { data: userData, error: userError } = await supabase.auth.getUser(token);
         const user = userData?.user;
-        if (userError || !user) return response.status(401).json({ error: 'Your session has expired.' });
+        if (userError || !user) return response.status(401).json({ error: 'Platnosť relácie vypršala.' });
         if (!process.env.ADMIN_EMAIL || user.email?.toLowerCase() !== process.env.ADMIN_EMAIL.toLowerCase()) {
-          return response.status(403).json({ error: 'Only the configured admin can view audit history.' });
+          return response.status(403).json({ error: 'Históriu zmien môže zobraziť iba nastavený správca.' });
         }
         includeAuditFields = true;
       }
@@ -77,14 +77,14 @@ module.exports = async function handler(request, response) {
       return response.status(200).json({ fines });
     }
 
-    if (request.method !== 'POST') return response.status(405).json({ error: 'Method not allowed.' });
-    if (!token) return response.status(401).json({ error: 'Admin login required to add a fine.' });
+    if (request.method !== 'POST') return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
+    if (!token) return response.status(401).json({ error: 'Na pridanie pokuty sa musíte prihlásiť ako správca.' });
     const supabase = getClient(process.env.SUPABASE_ANON_KEY, token);
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     const user = userData?.user;
-    if (userError || !user) return response.status(401).json({ error: 'Your session has expired.' });
+    if (userError || !user) return response.status(401).json({ error: 'Platnosť relácie vypršala.' });
     if (!process.env.ADMIN_EMAIL || user.email?.toLowerCase() !== process.env.ADMIN_EMAIL.toLowerCase()) {
-      return response.status(403).json({ error: 'Only the configured admin can add fines.' });
+      return response.status(403).json({ error: 'Pokuty môže pridávať iba nastavený správca.' });
     }
 
     const {
@@ -102,12 +102,12 @@ module.exports = async function handler(request, response) {
     const fineId = Number(fineIdValue);
 
     if (action === 'void') {
-      const reason = String(request.body?.reason || '').trim() || 'No reason provided.';
+      const reason = String(request.body?.reason || '').trim() || 'Dôvod nebol uvedený.';
       if (!Number.isSafeInteger(fineId) || fineId <= 0) {
-        return response.status(400).json({ error: 'Choose a fine to void.' });
+        return response.status(400).json({ error: 'Vyberte pokutu, ktorú chcete zrušiť.' });
       }
       if (reason.length > 500) {
-        return response.status(400).json({ error: 'The void reason cannot exceed 500 characters.' });
+        return response.status(400).json({ error: 'Dôvod zrušenia nesmie presiahnuť 500 znakov.' });
       }
       const { data: existingFine, error: existingError } = await supabase
         .from('fines')
@@ -115,10 +115,10 @@ module.exports = async function handler(request, response) {
         .eq('id', fineId)
         .maybeSingle();
       if (existingError) throw existingError;
-      if (!existingFine) return response.status(404).json({ error: 'Fine not found.' });
-      if (existingFine.voided_at) return response.status(409).json({ error: 'This fine is already voided.' });
+      if (!existingFine) return response.status(404).json({ error: 'Pokuta sa nenašla.' });
+      if (existingFine.voided_at) return response.status(409).json({ error: 'Táto pokuta už je zrušená.' });
       if (existingFine.objection_id) {
-        return response.status(409).json({ error: 'Use the objection decision to change a fine linked to an objection.' });
+        return response.status(409).json({ error: 'Pokutu prepojenú s námietkou zmeňte rozhodnutím o námietke.' });
       }
       const { error: voidError } = await supabase
         .from('fines')
@@ -132,15 +132,15 @@ module.exports = async function handler(request, response) {
         .is('voided_at', null);
       if (voidError) throw voidError;
       return response.status(200).json({
-        message: 'Fine voided. The original record was kept.'
+        message: 'Pokuta bola zrušená. Pôvodný záznam zostal zachovaný.'
       });
     }
 
     if (!['create', 'update'].includes(action)) {
-      return response.status(400).json({ error: 'Unsupported fine action.' });
+      return response.status(400).json({ error: 'Nepodporovaná akcia s pokutou.' });
     }
     if (action === 'update' && (!Number.isSafeInteger(fineId) || fineId <= 0)) {
-      return response.status(400).json({ error: 'Choose a fine to edit.' });
+      return response.status(400).json({ error: 'Vyberte pokutu, ktorú chcete upraviť.' });
     }
 
     let existingFine = null;
@@ -157,13 +157,13 @@ module.exports = async function handler(request, response) {
         .maybeSingle();
       if (existingError) throw existingError;
       existingFine = data;
-      if (!existingFine) return response.status(404).json({ error: 'Fine not found.' });
-      if (existingFine.voided_at) return response.status(409).json({ error: 'A voided fine cannot be edited.' });
+      if (!existingFine) return response.status(404).json({ error: 'Pokuta sa nenašla.' });
+      if (existingFine.voided_at) return response.status(409).json({ error: 'Zrušenú pokutu nemožno upraviť.' });
       if (existingFine.type !== 'normal' || existingFine.source !== 'manual') {
-        return response.status(400).json({ error: 'Only manually entered fines can be edited.' });
+        return response.status(400).json({ error: 'Upraviť možno iba manuálne zadané pokuty.' });
       }
       if (existingFine.objection_id) {
-        return response.status(409).json({ error: 'A fine linked to an objection cannot be edited.' });
+        return response.status(409).json({ error: 'Pokutu prepojenú s námietkou nemožno upraviť.' });
       }
     }
     const playerId = Number(playerIdValue);
@@ -171,13 +171,13 @@ module.exports = async function handler(request, response) {
     const isMatchDay = readBoolean(isMatchDayValue);
     const cleanNote = String(noteValue || '').trim();
     if (!Number.isSafeInteger(playerId) || playerId <= 0) {
-      return response.status(400).json({ error: 'Select an active player.' });
+      return response.status(400).json({ error: 'Vyberte aktívneho hráča.' });
     }
     if (!Number.isSafeInteger(fineTypeId) || fineTypeId <= 0) {
-      return response.status(400).json({ error: 'Select an active fine type.' });
+      return response.status(400).json({ error: 'Vyberte aktívny typ pokuty.' });
     }
     if (cleanNote.length > 500) {
-      return response.status(400).json({ error: 'The note cannot exceed 500 characters.' });
+      return response.status(400).json({ error: 'Poznámka nesmie presiahnuť 500 znakov.' });
     }
 
     const { data: player, error: playerError } = await supabase
@@ -187,7 +187,7 @@ module.exports = async function handler(request, response) {
       .maybeSingle();
     if (playerError) throw playerError;
     if (!player?.active) {
-      return response.status(400).json({ error: 'Select an active player.' });
+      return response.status(400).json({ error: 'Vyberte aktívneho hráča.' });
     }
 
     const { data: fineType, error: fineTypeError } = await supabase
@@ -210,13 +210,13 @@ module.exports = async function handler(request, response) {
       .maybeSingle();
     if (fineTypeError) throw fineTypeError;
     if (!fineType?.active) {
-      return response.status(400).json({ error: 'Select an active fine type.' });
+      return response.status(400).json({ error: 'Vyberte aktívny typ pokuty.' });
     }
     if (fineType.code === 'custom-fine' && !cleanNote) {
-      return response.status(400).json({ error: 'Describe the custom fine in the note.' });
+      return response.status(400).json({ error: 'V poznámke opíšte vlastnú pokutu.' });
     }
     if (fineType.match_day_only && !isMatchDay) {
-      return response.status(400).json({ error: 'This fine can only be issued for a match day.' });
+      return response.status(400).json({ error: 'Túto pokutu možno udeliť iba v deň zápasu.' });
     }
 
     const isPerUnit = fineType.calculation_mode === 'per_unit';
@@ -228,8 +228,8 @@ module.exports = async function handler(request, response) {
       || (!isPerUnit && (!Number.isSafeInteger(requestedQuantity) || requestedQuantity > 100))) {
       return response.status(400).json({
         error: isPerUnit
-          ? `Enter a positive number of ${fineType.unit_name || 'units'}.`
-          : 'Enter a whole-number quantity from 1 to 100.'
+          ? `Zadajte kladný počet jednotiek (${fineType.unit_name || 'jednotky'}).`
+          : 'Zadajte celé množstvo od 1 do 100.'
       });
     }
     if (action === 'update' && !isPerUnit && requestedQuantity !== 1) {
@@ -242,7 +242,7 @@ module.exports = async function handler(request, response) {
     const matchDayMultiplier = Number(fineType.match_day_multiplier);
     if (!Number.isFinite(defaultAmount) || defaultAmount <= 0
       || !Number.isFinite(matchDayMultiplier) || matchDayMultiplier < 1) {
-      throw new Error('The selected fine type has an invalid calculation configuration.');
+      throw new Error('Vybraný typ pokuty má neplatné nastavenie výpočtu.');
     }
 
     const baseAmount = roundMoney(defaultAmount * quantity);
@@ -254,12 +254,12 @@ module.exports = async function handler(request, response) {
       ? calculatedAmount
       : Number(amountValue);
     if (!Number.isFinite(amount) || amount <= 0) {
-      return response.status(400).json({ error: 'Enter a positive final amount.' });
+      return response.status(400).json({ error: 'Zadajte kladnú konečnú sumu.' });
     }
 
     const occurredAt = occurredAtValue ? new Date(occurredAtValue) : new Date();
     if (Number.isNaN(occurredAt.getTime())) {
-      return response.status(400).json({ error: 'Enter a valid date and time.' });
+      return response.status(400).json({ error: 'Zadajte platný dátum a čas.' });
     }
 
     const fineValues = {
@@ -320,7 +320,7 @@ module.exports = async function handler(request, response) {
         .eq('id', fineId)
         .is('voided_at', null);
       if (updateError) throw updateError;
-      return response.status(200).json({ message: 'Fine updated.' });
+      return response.status(200).json({ message: 'Pokuta bola upravená.' });
     }
 
     fineValues.user_id = user.id;
@@ -341,14 +341,14 @@ module.exports = async function handler(request, response) {
       .insert(insertValues);
     if (insertError) {
       if (insertError.code === '42501') {
-        throw new Error('Database permissions are not configured for player fines. Run database/002-players-and-fine-events.sql in Supabase.');
+        throw new Error('Databázové oprávnenia pre pokuty hráčov nie sú nastavené. Spustite database/002-players-and-fine-events.sql v Supabase.');
       }
       throw insertError;
     }
 
-    return response.status(200).json({ message: 'Fine added.' });
+    return response.status(200).json({ message: 'Pokuta bola pridaná.' });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Database request failed.' });
+    return response.status(500).json({ error: error.message || 'Databázová požiadavka zlyhala.' });
   }
 };

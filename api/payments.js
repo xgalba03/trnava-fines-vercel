@@ -262,14 +262,14 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method === 'GET') {
       const period = parsePeriod(request.query?.period);
-      if (!period) return response.status(400).json({ error: 'Enter a valid month.' });
+      if (!period) return response.status(400).json({ error: 'Zadajte platný mesiac.' });
       const supabase = createSupabaseClient();
       return response.status(200).json(await loadSnapshot(supabase, period));
     }
 
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'GET, POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
 
     const auth = await requireAdmin(request);
@@ -281,15 +281,15 @@ module.exports = async function handler(request, response) {
       const clubPaymentDate = parseDate(body.club_payment_date);
       const deadlineDays = Number(appSettings.daysAfterClubPaymentBeforeDeadline);
       if (!period || !clubPaymentDate) {
-        return response.status(400).json({ error: 'Choose a valid month and club payment date.' });
+        return response.status(400).json({ error: 'Vyberte platný mesiac a dátum platby od klubu.' });
       }
       if (!Number.isSafeInteger(deadlineDays) || deadlineDays < 0 || deadlineDays > 365) {
-        throw new Error('The configured payment deadline is invalid.');
+        throw new Error('Nastavený termín platby je neplatný.');
       }
 
       const links = await findOrCreateMonthlyPeriod(auth.supabase, period);
       if (!links.monthlyPeriodId) {
-        return response.status(400).json({ error: 'No matching season is available for this month.' });
+        return response.status(400).json({ error: 'Pre tento mesiac nie je dostupná zodpovedajúca sezóna.' });
       }
       const paymentDeadline = addDays(clubPaymentDate, deadlineDays);
       const { error: updateError } = await auth.supabase
@@ -301,7 +301,7 @@ module.exports = async function handler(request, response) {
         .eq('id', links.monthlyPeriodId);
       if (updateError) throw updateError;
       return response.status(200).json({
-        message: `Deadline set to ${paymentDeadline}.`,
+        message: `Termín bol nastavený na ${paymentDeadline}.`,
         monthly_period: {
           id: links.monthlyPeriodId,
           season_id: links.seasonId,
@@ -317,7 +317,7 @@ module.exports = async function handler(request, response) {
       const playerId = Number(body.player_id);
       const period = parsePeriod(body.period_month);
       if (!Number.isSafeInteger(playerId) || playerId <= 0 || !period) {
-        return response.status(400).json({ error: 'Choose a player and settlement month.' });
+        return response.status(400).json({ error: 'Vyberte hráča a zúčtovací mesiac.' });
       }
       const { data: player, error: playerError } = await auth.supabase
         .from('players')
@@ -325,11 +325,11 @@ module.exports = async function handler(request, response) {
         .eq('id', playerId)
         .maybeSingle();
       if (playerError) throw playerError;
-      if (!player?.active) return response.status(400).json({ error: 'Select an active player.' });
+      if (!player?.active) return response.status(400).json({ error: 'Vyberte aktívneho hráča.' });
 
       const links = await findOrCreateMonthlyPeriod(auth.supabase, period);
       if (!links.monthlyPeriodId) {
-        return response.status(400).json({ error: 'No matching season is available for this month.' });
+        return response.status(400).json({ error: 'Pre tento mesiac nie je dostupná zodpovedajúca sezóna.' });
       }
       const { data: monthlyPeriod, error: monthlyPeriodError } = await auth.supabase
         .from('monthly_periods')
@@ -338,7 +338,7 @@ module.exports = async function handler(request, response) {
         .maybeSingle();
       if (monthlyPeriodError) throw monthlyPeriodError;
       if (!monthlyPeriod?.payment_deadline) {
-        return response.status(400).json({ error: 'Set the monthly payment deadline before adding an exception.' });
+        return response.status(400).json({ error: 'Pred pridaním výnimky nastavte mesačný termín platby.' });
       }
 
       if (body.action === 'clear_exception') {
@@ -348,7 +348,7 @@ module.exports = async function handler(request, response) {
           .eq('player_id', playerId)
           .eq('monthly_period_id', links.monthlyPeriodId);
         if (clearError) throw clearError;
-        return response.status(200).json({ message: 'Settlement exception cleared.' });
+        return response.status(200).json({ message: 'Výnimka zo zúčtovania bola vymazaná.' });
       }
 
       const customDeadline = body.custom_deadline ? parseDate(body.custom_deadline) : null;
@@ -359,16 +359,16 @@ module.exports = async function handler(request, response) {
       const reason = String(body.reason || '').trim();
       if ((body.custom_deadline && !customDeadline)
         || (body.penalties_paused_until && !pausedUntil)) {
-        return response.status(400).json({ error: 'Enter valid exception dates.' });
+        return response.status(400).json({ error: 'Zadajte platné dátumy výnimky.' });
       }
       if (customDeadline && customDeadline < monthlyPeriod.payment_deadline) {
-        return response.status(400).json({ error: 'An extended deadline cannot be earlier than the normal deadline.' });
+        return response.status(400).json({ error: 'Predĺžený termín nemôže byť skorší než bežný termín.' });
       }
       if (!customDeadline && !pausedUntil && !penaltiesWaived) {
-        return response.status(400).json({ error: 'Extend the deadline, pause penalties, or waive them.' });
+        return response.status(400).json({ error: 'Predĺžte termín, pozastavte penále alebo ich odpustite.' });
       }
       if (reason.length > 500) {
-        return response.status(400).json({ error: 'The private reason cannot exceed 500 characters.' });
+        return response.status(400).json({ error: 'Súkromný dôvod nesmie presiahnuť 500 znakov.' });
       }
 
       const { data: existing, error: existingError } = await auth.supabase
@@ -395,17 +395,17 @@ module.exports = async function handler(request, response) {
           created_by: auth.user.id
         });
       if (result.error) throw result.error;
-      return response.status(200).json({ message: 'Settlement exception saved.' });
+      return response.status(200).json({ message: 'Výnimka zo zúčtovania bola uložená.' });
     }
 
     if (body.action === 'reverse') {
       const paymentId = Number(body.payment_id);
-      const reason = String(body.reason || '').trim() || 'No reason provided.';
+      const reason = String(body.reason || '').trim() || 'Dôvod nebol uvedený.';
       if (!Number.isSafeInteger(paymentId) || paymentId <= 0) {
-        return response.status(400).json({ error: 'Choose a payment to reverse.' });
+        return response.status(400).json({ error: 'Vyberte platbu, ktorú chcete stornovať.' });
       }
       if (reason.length > 500) {
-        return response.status(400).json({ error: 'The reversal reason cannot exceed 500 characters.' });
+        return response.status(400).json({ error: 'Dôvod stornovania nesmie presiahnuť 500 znakov.' });
       }
       const { data: payment, error: paymentError } = await auth.supabase
         .from('payments')
@@ -413,8 +413,8 @@ module.exports = async function handler(request, response) {
         .eq('id', paymentId)
         .maybeSingle();
       if (paymentError) throw paymentError;
-      if (!payment) return response.status(404).json({ error: 'Payment not found.' });
-      if (payment.reversed_at) return response.status(409).json({ error: 'This payment is already reversed.' });
+      if (!payment) return response.status(404).json({ error: 'Platba sa nenašla.' });
+      if (payment.reversed_at) return response.status(409).json({ error: 'Táto platba už je stornovaná.' });
 
       const { error: reverseError } = await auth.supabase
         .from('payments')
@@ -426,7 +426,7 @@ module.exports = async function handler(request, response) {
         .eq('id', paymentId)
         .is('reversed_at', null);
       if (reverseError) throw reverseError;
-      return response.status(200).json({ message: 'Payment reversed. The original record was kept.' });
+      return response.status(200).json({ message: 'Platba bola stornovaná. Pôvodný záznam zostal zachovaný.' });
     }
 
     const playerId = Number(body.player_id);
@@ -436,17 +436,17 @@ module.exports = async function handler(request, response) {
     const note = String(body.admin_note || '').trim();
     const paidAt = new Date(body.paid_at || Date.now());
     if (!Number.isSafeInteger(playerId) || playerId <= 0) {
-      return response.status(400).json({ error: 'Select an active player.' });
+      return response.status(400).json({ error: 'Vyberte aktívneho hráča.' });
     }
     if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000) {
-      return response.status(400).json({ error: 'Enter a positive payment amount.' });
+      return response.status(400).json({ error: 'Zadajte kladnú sumu platby.' });
     }
-    if (!period) return response.status(400).json({ error: 'Enter a valid payment month.' });
+    if (!period) return response.status(400).json({ error: 'Zadajte platný mesiac platby.' });
     if (!['cash', 'bank_transfer', 'other'].includes(method)) {
-      return response.status(400).json({ error: 'Select cash, bank transfer, or other.' });
+      return response.status(400).json({ error: 'Vyberte hotovosť, bankový prevod alebo iný spôsob.' });
     }
-    if (Number.isNaN(paidAt.getTime())) return response.status(400).json({ error: 'Enter a valid payment date.' });
-    if (note.length > 500) return response.status(400).json({ error: 'The note cannot exceed 500 characters.' });
+    if (Number.isNaN(paidAt.getTime())) return response.status(400).json({ error: 'Zadajte platný dátum platby.' });
+    if (note.length > 500) return response.status(400).json({ error: 'Poznámka nesmie presiahnuť 500 znakov.' });
 
     const { data: player, error: playerError } = await auth.supabase
       .from('players')
@@ -454,7 +454,7 @@ module.exports = async function handler(request, response) {
       .eq('id', playerId)
       .maybeSingle();
     if (playerError) throw playerError;
-    if (!player?.active) return response.status(400).json({ error: 'Select an active player.' });
+    if (!player?.active) return response.status(400).json({ error: 'Vyberte aktívneho hráča.' });
 
     const links = await findOrCreateMonthlyPeriod(auth.supabase, period);
     const { error: insertError } = await auth.supabase.from('payments').insert({
@@ -472,7 +472,7 @@ module.exports = async function handler(request, response) {
     });
     if (insertError) throw insertError;
 
-    return response.status(201).json({ message: 'Payment recorded.' });
+    return response.status(201).json({ message: 'Platba bola zaznamenaná.' });
   } catch (error) {
     console.error(error);
     const errorText = String(error.message || '');
@@ -485,7 +485,7 @@ module.exports = async function handler(request, response) {
         ? 'Settlement exceptions are not configured yet. Run database/009-settlement-exceptions.sql in Supabase.'
         : missingTable
         ? 'Payments are not configured yet. Run database/007-player-payment-ledger.sql in Supabase.'
-        : (error.message || 'Unable to process payments.')
+        : (error.message || 'Platby sa nepodarilo spracovať.')
     });
   }
 };

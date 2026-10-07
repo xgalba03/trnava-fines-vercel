@@ -5,7 +5,7 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
     const auth = await requireAdmin(request);
     if (auth.error) return response.status(auth.status).json({ error: auth.error });
@@ -14,11 +14,11 @@ module.exports = async function handler(request, response) {
     query = seasonId ? query.eq('id', seasonId) : query.eq('active', true);
     const { data: seasons, error } = await query.order('start_date', { ascending: false }).limit(1);
     if (error) throw error;
-    if (!seasons?.length) return response.status(400).json({ error: 'No matching season is available.' });
+    if (!seasons?.length) return response.status(400).json({ error: 'Nie je dostupná žiadna zodpovedajúca sezóna.' });
     const count = await scheduleBirthdays(auth.supabase, auth.user.id, seasons[0]);
-    return response.status(200).json({ message: `Scheduled ${count} birthday obligation${count === 1 ? '' : 's'}.`, count });
+    return response.status(200).json({ message: `Naplánované narodeninové povinnosti: ${count}.`, count });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Unable to schedule birthdays.' });
+    return response.status(500).json({ error: error.message || 'Narodeniny sa nepodarilo naplánovať.' });
   }
 };

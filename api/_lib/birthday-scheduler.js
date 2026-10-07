@@ -87,8 +87,8 @@ async function scheduleBirthdays(supabase, userId, season) {
       triggerDate: (inside || nearest).toISOString().slice(0, 10),
       selectedEvent,
       note: inside
-        ? 'Scheduled on the first eligible full-team event on or after the birthday.'
-        : 'Birthday is outside the season; scheduled into the largest available gap.'
+        ? 'Naplánované na prvú vhodnú udalosť celého tímu v deň narodenín alebo po nich.'
+        : 'Narodeniny sú mimo sezóny; naplánované do najväčšieho dostupného voľného obdobia.'
     });
   }
 
@@ -102,7 +102,7 @@ async function scheduleBirthdays(supabase, userId, season) {
       due_at: plan.selectedEvent?.starts_at || null,
       status: 'planned',
       schedule_mode: 'automatic',
-      scheduling_note: plan.selectedEvent ? plan.note : 'No eligible full-team event is available.',
+      scheduling_note: plan.selectedEvent ? plan.note : 'Nie je dostupná vhodná udalosť celého tímu.',
       updated_by: userId
     };
     let obligation;
@@ -187,8 +187,8 @@ async function scheduleNewArrivals(supabase, userId, season) {
       status: 'planned',
       schedule_mode: 'automatic',
       scheduling_note: selectedEvent
-        ? 'Scheduled on the first full-team event on or after joining.'
-        : 'No eligible full-team event is available after the joining date.',
+        ? 'Naplánované na prvú udalosť celého tímu v deň príchodu alebo po ňom.'
+        : 'Po dátume príchodu nie je dostupná vhodná udalosť celého tímu.',
       updated_by: userId
     };
     const result = current

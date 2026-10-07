@@ -139,5 +139,5 @@ test('an objection can be submitted without typing a reason', async () => {
 
   assert.equal(response.statusCode, 200);
   assert.equal(rpcArguments.requested_fine_id, 4);
-  assert.equal(rpcArguments.objection_reason, 'No reason provided.');
+  assert.equal(rpcArguments.objection_reason, 'Dôvod nebol uvedený.');
 });

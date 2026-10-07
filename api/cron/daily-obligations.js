@@ -11,11 +11,11 @@ module.exports = async function handler(request, response) {
   try {
     if (request.method !== 'GET' && request.method !== 'POST') {
       response.setHeader('Allow', 'GET, POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
     const expected = process.env.CRON_SECRET;
     if (!expected || request.headers.authorization !== `Bearer ${expected}`) {
-      return response.status(401).json({ error: 'Invalid cron authorization.' });
+      return response.status(401).json({ error: 'Neplatné oprávnenie plánovanej úlohy.' });
     }
 
     const supabase = createServiceClient();
@@ -82,7 +82,7 @@ module.exports = async function handler(request, response) {
           base_amount: amount,
           calculated_amount: amount,
           amount_overridden: false,
-          note: `Daily penalty for unfulfilled ${type.name}.`,
+          note: `Denné penále za nesplnenú povinnosť: ${type.name}.`,
           occurred_at: `${chargeDate}T12:00:00Z`,
           type: 'obligation_penalty',
           source: 'automatic',
@@ -115,6 +115,6 @@ module.exports = async function handler(request, response) {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Daily fine processing failed.' });
+    return response.status(500).json({ error: error.message || 'Denné spracovanie pokút zlyhalo.' });
   }
 };

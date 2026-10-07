@@ -22,7 +22,7 @@ module.exports = async function handler(request, response) {
     }
     if (request.method !== 'POST') {
       response.setHeader('Allow', 'GET, POST');
-      return response.status(405).json({ error: 'Method not allowed.' });
+      return response.status(405).json({ error: 'Táto metóda nie je povolená.' });
     }
 
     const auth = await requireAdmin(request);
@@ -33,9 +33,9 @@ module.exports = async function handler(request, response) {
 
     if (action === 'submit') {
       const fineId = Number(body.fine_id);
-      const reason = String(body.reason || '').trim() || 'No reason provided.';
+      const reason = String(body.reason || '').trim() || 'Dôvod nebol uvedený.';
       if (!Number.isSafeInteger(fineId) || fineId <= 0) {
-        return response.status(400).json({ error: 'Choose a fine for the objection.' });
+        return response.status(400).json({ error: 'Vyberte pokutu, ku ktorej chcete podať námietku.' });
       }
       const { data: existing, error: existingError } = await supabase
         .from('objections')
@@ -56,7 +56,7 @@ module.exports = async function handler(request, response) {
       const objectionId = Number(body.objection_id);
       const decision = String(body.decision || '');
       if (!Number.isSafeInteger(objectionId) || objectionId <= 0 || !['accepted', 'rejected'].includes(decision)) {
-        return response.status(400).json({ error: 'Objection and accepted/rejected decision are required.' });
+        return response.status(400).json({ error: 'Je potrebná námietka a rozhodnutie prijať alebo zamietnuť.' });
       }
       const { error } = await supabase.rpc('resolve_objection', {
         requested_objection_id: objectionId,
@@ -65,12 +65,12 @@ module.exports = async function handler(request, response) {
       });
       if (error) throw error;
     } else {
-      return response.status(400).json({ error: 'Unknown objection action.' });
+      return response.status(400).json({ error: 'Neznáma akcia námietky.' });
     }
 
     return response.status(200).json({ objections: await listObjections(supabase) });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ error: error.message || 'Unable to manage objections.' });
+    return response.status(500).json({ error: error.message || 'Námietky sa nepodarilo spravovať.' });
   }
 };

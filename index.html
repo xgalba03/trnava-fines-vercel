@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="sk">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Trnava Fines MVP</title>
+    <title>Trnavské pokuty</title>
     <script>
       try {
         const savedTheme = localStorage.getItem('trnava_theme');
@@ -946,331 +946,331 @@
       <section id="app">
         <div id="app-header">
           <div>
-            <h1>Trnava Fines</h1>
-            <span class="header-subtitle">Team fine bank</span>
+            <h1>Trnavské pokuty</h1>
+            <span class="header-subtitle">Tímová pokladňa pokút</span>
           </div>
           <div class="header-actions">
-            <button id="theme-toggle" class="icon-button secondary" type="button" aria-label="Use dark mode" title="Toggle color theme">☾</button>
-            <button id="login" type="button">Login</button>
-            <button id="add-fine" type="button" hidden>+ Fine</button>
-            <button id="admin-menu" class="secondary" type="button" hidden>Admin</button>
-            <button id="logout" type="button" hidden>Log out</button>
+            <button id="theme-toggle" class="icon-button secondary" type="button" aria-label="Použiť tmavý režim" title="Prepnúť farebný režim">☾</button>
+            <button id="login" type="button">Prihlásiť</button>
+            <button id="add-fine" type="button" hidden>+ Pokuta</button>
+            <button id="admin-menu" class="secondary" type="button" hidden>Správca</button>
+            <button id="logout" type="button" hidden>Odhlásiť</button>
           </div>
-          <nav class="top-nav" aria-label="Page sections">
-            <a href="#account-section" aria-current="true">Players</a>
-            <a href="#analytics-section">Stats</a>
-            <a href="#fines-section">Fines</a>
-            <a href="#event-section">Events</a>
-            <a href="#obligation-section">Obligations</a>
-            <a href="#objection-section">Objections</a>
+          <nav class="top-nav" aria-label="Sekcie stránky">
+            <a href="#account-section" aria-current="true">Hráči</a>
+            <a href="#analytics-section">Štatistiky</a>
+            <a href="#fines-section">Pokuty</a>
+            <a href="#event-section">Udalosti</a>
+            <a href="#obligation-section">Povinnosti</a>
+            <a href="#objection-section">Námietky</a>
           </nav>
         </div>
         <section id="auth" hidden>
-          <p>Admin access is required to manage fines.</p>
+          <p>Na správu pokút je potrebný prístup administrátora.</p>
           <form id="auth-form">
-            <input name="email" type="email" placeholder="Your email" autocomplete="username" required />
-            <input name="password" type="password" placeholder="Password" autocomplete="current-password" required />
-            <button type="submit">Log in</button>
+            <input name="email" type="email" placeholder="Váš e-mail" autocomplete="username" required />
+            <input name="password" type="password" placeholder="Heslo" autocomplete="current-password" required />
+            <button type="submit">Prihlásiť</button>
           </form>
-          <button id="magic-link" class="secondary" type="button">Send one-time setup link</button>
+          <button id="magic-link" class="secondary" type="button">Odoslať jednorazový odkaz na nastavenie</button>
           <p id="auth-status" role="status"></p>
         </section>
         <div id="fine-entry" hidden>
-          <h3 id="fine-entry-heading">Add a fine</h3>
-          <p>Add or correct a fine below. Every voided record remains in the admin audit history.</p>
+          <h3 id="fine-entry-heading">Pridať pokutu</h3>
+          <p>Nižšie môžete pridať alebo opraviť pokutu. Každý zrušený záznam zostane v histórii správcu.</p>
           <form id="fine-form">
             <input name="fine_id" type="hidden" />
             <label class="form-field">
-              <span>Player</span>
+              <span>Hráč</span>
               <select name="player_id" required disabled>
-                <option value="">Loading players...</option>
+                <option value="">Načítavajú sa hráči...</option>
               </select>
             </label>
             <label class="form-field">
-              <span>Fine</span>
+              <span>Pokuta</span>
               <select name="fine_type_id" required disabled>
-                <option value="">Loading fine types...</option>
+                <option value="">Načítavajú sa typy pokút...</option>
               </select>
             </label>
             <label class="checkbox-field full-width">
               <input name="is_match_day" type="checkbox" />
-              <span id="match-day-label">Match day</span>
+              <span id="match-day-label">Deň zápasu</span>
             </label>
             <label id="quantity-field" class="form-field">
-              <span id="quantity-label">Quantity</span>
+              <span id="quantity-label">Množstvo</span>
               <input name="quantity" type="number" min="1" step="1" value="1" />
             </label>
             <label class="form-field">
-              <span id="amount-label">Final amount (€)</span>
+              <span id="amount-label">Konečná suma (€)</span>
               <input name="amount" type="number" min="0.01" step="0.01" required />
             </label>
             <label class="form-field">
-              <span>Occurred at</span>
+              <span>Dátum a čas</span>
               <input name="occurred_at" type="datetime-local" required />
             </label>
             <label class="form-field full-width">
-              <span id="note-label">Optional note</span>
-              <input name="note" maxlength="500" placeholder="Additional context" />
+              <span id="note-label">Voliteľná poznámka</span>
+              <input name="note" maxlength="500" placeholder="Doplňujúce informácie" />
             </label>
             <p id="calculation" role="status"></p>
             <div class="actions full-width">
-              <button id="fine-reset" class="secondary" type="button">Cancel</button>
-              <button id="fine-submit" type="submit">Add fine</button>
+              <button id="fine-reset" class="secondary" type="button">Zrušiť</button>
+              <button id="fine-submit" type="submit">Pridať pokutu</button>
             </div>
           </form>
         </div>
         <div id="payment-entry" hidden>
-          <h3>Record a payment</h3>
-          <p>Record money received from a player for their monthly account balance.</p>
+          <h3>Zaznamenať platbu</h3>
+          <p>Zaznamenajte peniaze prijaté od hráča na úhradu jeho mesačného zostatku.</p>
           <form id="payment-form">
             <label class="form-field">
-              <span>Player</span>
+              <span>Hráč</span>
               <select name="player_id" required disabled>
-                <option value="">Loading players...</option>
+                <option value="">Načítavajú sa hráči...</option>
               </select>
             </label>
             <label class="form-field">
-              <span>Month being settled</span>
+              <span>Uhrádzaný mesiac</span>
               <input name="period_month" type="month" required />
             </label>
             <label class="form-field">
-              <span>Amount received (€)</span>
+              <span>Prijatá suma (€)</span>
               <input name="amount" type="number" min="0.01" max="1000000" step="0.01" required />
             </label>
             <label class="form-field">
-              <span>Received at</span>
+              <span>Dátum prijatia</span>
               <input name="paid_at" type="datetime-local" required />
             </label>
             <label class="form-field">
-              <span>Method</span>
+              <span>Spôsob</span>
               <select name="payment_method" required>
-                <option value="cash">Cash</option>
-                <option value="bank_transfer">Bank transfer</option>
-                <option value="other">Other</option>
+                <option value="cash">Hotovosť</option>
+                <option value="bank_transfer">Bankový prevod</option>
+                <option value="other">Iné</option>
               </select>
             </label>
             <label class="form-field">
-              <span>Private admin note (optional)</span>
-              <input name="admin_note" maxlength="500" placeholder="Reference or correction note" />
+              <span>Súkromná poznámka správcu (voliteľná)</span>
+              <input name="admin_note" maxlength="500" placeholder="Referencia alebo poznámka k oprave" />
             </label>
-            <button class="full-width" type="submit">Record payment</button>
+            <button class="full-width" type="submit">Zaznamenať platbu</button>
           </form>
           <p id="payment-status" role="status"></p>
         </div>
         <div id="settlement-entry" hidden>
-          <h3>Monthly deadline</h3>
-          <p>Enter the date the club payment arrived. The player deadline is calculated automatically.</p>
+          <h3>Mesačný termín</h3>
+          <p>Zadajte dátum prijatia platby od klubu. Termín pre hráčov sa vypočíta automaticky.</p>
           <form id="settlement-form">
             <label class="form-field">
-              <span>Settlement month</span>
+              <span>Zúčtovací mesiac</span>
               <input name="period_month" type="month" required />
             </label>
             <label class="form-field">
-              <span>Club payment received</span>
+              <span>Platba od klubu prijatá</span>
               <input name="club_payment_date" type="date" required />
             </label>
             <p id="settlement-calculation" class="full-width" role="status"></p>
-            <button class="full-width" type="submit">Save monthly deadline</button>
+            <button class="full-width" type="submit">Uložiť mesačný termín</button>
           </form>
           <p id="settlement-status" role="status"></p>
         </div>
         <div id="exception-entry" hidden>
-          <h3>Payment exception</h3>
-          <p>Change one player's deadline, pause penalties temporarily, or waive them for a settlement month.</p>
+          <h3>Výnimka z platby</h3>
+          <p>Zmeňte termín hráča, dočasne pozastavte penále alebo ich odpustite pre zúčtovací mesiac.</p>
           <form id="exception-form">
             <label class="form-field">
-              <span>Player</span>
+              <span>Hráč</span>
               <select name="player_id" required disabled>
-                <option value="">Loading players...</option>
+                <option value="">Načítavajú sa hráči...</option>
               </select>
             </label>
             <label class="form-field">
-              <span>Settlement month</span>
+              <span>Zúčtovací mesiac</span>
               <input name="period_month" type="month" required />
             </label>
             <label class="form-field">
-              <span>Extended deadline (optional)</span>
+              <span>Predĺžený termín (voliteľné)</span>
               <input name="custom_deadline" type="date" />
             </label>
             <label class="form-field">
-              <span>Pause penalties through (optional)</span>
+              <span>Pozastaviť penále do (voliteľné)</span>
               <input name="penalties_paused_until" type="date" />
             </label>
             <label class="checkbox-field full-width">
               <input name="penalties_waived" type="checkbox" />
-              <span>Waive all automatic penalties for this month</span>
+              <span>Odpustiť všetky automatické penále za tento mesiac</span>
             </label>
             <label class="form-field full-width">
-              <span>Private reason (optional; blank keeps previous)</span>
-              <input name="reason" maxlength="500" placeholder="Not shown publicly" />
+              <span>Súkromný dôvod (voliteľný; prázdne ponechá pôvodný)</span>
+              <input name="reason" maxlength="500" placeholder="Nezobrazuje sa verejne" />
             </label>
             <div class="actions full-width">
-              <button id="exception-clear" class="secondary" type="button">Clear exception</button>
-              <button type="submit">Save exception</button>
+              <button id="exception-clear" class="secondary" type="button">Vymazať výnimku</button>
+              <button type="submit">Uložiť výnimku</button>
             </div>
           </form>
           <p id="exception-status" role="status"></p>
         </div>
         <section id="password-settings" hidden>
-          <h3>Password</h3>
-          <p>Set or change the password for future admin logins.</p>
+          <h3>Heslo</h3>
+          <p>Nastavte alebo zmeňte heslo pre budúce prihlásenia správcu.</p>
           <form id="password-form">
-            <input name="password" type="password" minlength="12" placeholder="New password" autocomplete="new-password" required />
-            <input name="confirmation" type="password" minlength="12" placeholder="Confirm password" autocomplete="new-password" required />
-            <button type="submit">Save password</button>
+            <input name="password" type="password" minlength="12" placeholder="Nové heslo" autocomplete="new-password" required />
+            <input name="confirmation" type="password" minlength="12" placeholder="Potvrďte heslo" autocomplete="new-password" required />
+            <button type="submit">Uložiť heslo</button>
           </form>
           <p id="password-status" role="status"></p>
         </section>
         <section id="admin-tools" class="panel admin-only" hidden>
-          <h3>Data tools</h3>
-          <p>Sync the version-controlled seed files, or recalculate automatic birthday dates after calendar changes.</p>
+          <h3>Dátové nástroje</h3>
+          <p>Synchronizujte zdrojové súbory alebo prepočítajte automatické dátumy narodenín po zmenách kalendára.</p>
           <div class="actions">
-            <button id="sync-seed" type="button">Sync seed files</button>
-            <button id="schedule-birthdays" class="secondary" type="button">Schedule birthdays</button>
+            <button id="sync-seed" type="button">Synchronizovať dáta</button>
+            <button id="schedule-birthdays" class="secondary" type="button">Naplánovať narodeniny</button>
           </div>
           <p id="admin-tools-status" role="status"></p>
         </section>
         <section id="event-section" class="panel">
-          <h2>Important team events</h2>
+          <h2>Dôležité tímové udalosti</h2>
           <div id="event-admin" class="admin-only" hidden>
-            <h3>Add or edit an event</h3>
+            <h3>Pridať alebo upraviť udalosť</h3>
             <form id="event-form">
               <input name="event_id" type="hidden" />
-              <label class="form-field"><span>Season</span><select name="season_id" required></select></label>
-              <label class="form-field"><span>Stable code</span><input name="code" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></label>
-              <label class="form-field"><span>Name</span><input name="name" required /></label>
-              <label class="form-field"><span>Type</span><select name="event_type"><option value="practice">Practice</option><option value="match">Match</option><option value="team_dinner">Team dinner</option><option value="other">Other</option></select></label>
-              <label class="form-field"><span>Starts</span><input name="starts_at" type="datetime-local" required /></label>
-              <label class="form-field"><span>Ends (optional)</span><input name="ends_at" type="datetime-local" /></label>
-              <label class="form-field"><span>Attendance</span><select name="attendance_scope"><option value="full_team">Full team</option><option value="partial_team">Part of team</option></select></label>
-              <label class="form-field"><span>Status</span><select name="status"><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
-              <label id="event-players-field" class="form-field full-width" hidden><span>Players attending (Ctrl/Cmd for several)</span><select name="player_ids" multiple size="5"></select></label>
-              <label class="form-field"><span>Location</span><input name="location" /></label>
-              <label class="form-field"><span>Notes</span><input name="notes" /></label>
-              <div class="actions full-width"><button id="event-reset" class="secondary" type="button">Clear</button><button type="submit">Save event</button></div>
+              <label class="form-field"><span>Sezóna</span><select name="season_id" required></select></label>
+              <label class="form-field"><span>Stály kód</span><input name="code" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></label>
+              <label class="form-field"><span>Názov</span><input name="name" required /></label>
+              <label class="form-field"><span>Typ</span><select name="event_type"><option value="practice">Tréning</option><option value="match">Zápas</option><option value="team_dinner">Tímová večera</option><option value="other">Iné</option></select></label>
+              <label class="form-field"><span>Začiatok</span><input name="starts_at" type="datetime-local" required /></label>
+              <label class="form-field"><span>Koniec (voliteľný)</span><input name="ends_at" type="datetime-local" /></label>
+              <label class="form-field"><span>Účasť</span><select name="attendance_scope"><option value="full_team">Celý tím</option><option value="partial_team">Časť tímu</option></select></label>
+              <label class="form-field"><span>Stav</span><select name="status"><option value="scheduled">Naplánovaná</option><option value="completed">Dokončená</option><option value="cancelled">Zrušená</option></select></label>
+              <label id="event-players-field" class="form-field full-width" hidden><span>Zúčastnení hráči (Ctrl/Cmd pre viac)</span><select name="player_ids" multiple size="5"></select></label>
+              <label class="form-field"><span>Miesto</span><input name="location" /></label>
+              <label class="form-field"><span>Poznámky</span><input name="notes" /></label>
+              <div class="actions full-width"><button id="event-reset" class="secondary" type="button">Vymazať</button><button type="submit">Uložiť udalosť</button></div>
             </form>
             <p id="event-status" role="status"></p>
           </div>
-          <ul id="events" class="scroll-list event-list" data-empty="No team events scheduled."></ul>
+          <ul id="events" class="scroll-list event-list" data-empty="Nie sú naplánované žiadne tímové udalosti."></ul>
         </section>
         <section id="obligation-section" class="panel">
-          <h2>Player obligations</h2>
+          <h2>Povinnosti hráčov</h2>
           <div id="obligation-admin" class="admin-only" hidden>
-            <h3>Add or edit an obligation</h3>
+            <h3>Pridať alebo upraviť povinnosť</h3>
             <form id="obligation-form">
               <input name="obligation_id" type="hidden" />
-              <label class="form-field"><span>Player</span><select name="player_id" required></select></label>
-              <label class="form-field"><span>Obligation</span><select name="obligation_type_id" required></select></label>
-              <label class="form-field"><span>Full-team event</span><select name="scheduled_event_id" required></select></label>
-              <label class="form-field"><span>Trigger date</span><input name="trigger_date" type="date" required /></label>
-              <label class="form-field full-width"><span>Note</span><input name="note" /></label>
-              <div class="actions full-width"><button id="obligation-reset" class="secondary" type="button">Clear</button><button id="obligation-submit" type="submit">Add obligation</button></div>
+              <label class="form-field"><span>Hráč</span><select name="player_id" required></select></label>
+              <label class="form-field"><span>Povinnosť</span><select name="obligation_type_id" required></select></label>
+              <label class="form-field"><span>Udalosť pre celý tím</span><select name="scheduled_event_id" required></select></label>
+              <label class="form-field"><span>Dátum vzniku</span><input name="trigger_date" type="date" required /></label>
+              <label class="form-field full-width"><span>Poznámka</span><input name="note" /></label>
+              <div class="actions full-width"><button id="obligation-reset" class="secondary" type="button">Vymazať</button><button id="obligation-submit" type="submit">Pridať povinnosť</button></div>
             </form>
             <p id="obligation-status" role="status"></p>
           </div>
-          <ul id="obligations" class="scroll-list" data-empty="No active player obligations."></ul>
+          <ul id="obligations" class="scroll-list" data-empty="Žiadny hráč nemá aktívnu povinnosť."></ul>
         </section>
         <section id="objection-section" class="panel">
-          <h2>Objections</h2>
-          <p>A submitted objection costs €1. If accepted, the original fine is voided and a €2 account credit is recorded.</p>
-          <ul id="objections" class="scroll-list" data-empty="No objections submitted."></ul>
+          <h2>Námietky</h2>
+          <p>Podanie námietky stojí 1 €. Ak je prijatá, pôvodná pokuta sa zruší a na účet sa pripíše kredit 2 €.</p>
+          <ul id="objections" class="scroll-list" data-empty="Neboli podané žiadne námietky."></ul>
         </section>
         <section id="fines-section" class="panel">
           <div class="section-heading">
             <div>
-              <h2>Fine history</h2>
-              <span class="section-subtitle">Browse individual fine events</span>
+              <h2>História pokút</h2>
+              <span class="section-subtitle">Prehľad jednotlivých pokút</span>
             </div>
           </div>
-          <div class="fine-filters" aria-label="Fine history filters">
+          <div class="fine-filters" aria-label="Filtre histórie pokút">
             <label class="form-field">
-              <span>Player</span>
-              <select id="fine-filter-player"><option value="">All players</option></select>
+              <span>Hráč</span>
+              <select id="fine-filter-player"><option value="">Všetci hráči</option></select>
             </label>
             <label class="form-field">
-              <span>Month</span>
+              <span>Mesiac</span>
               <input id="fine-filter-month" type="month" />
             </label>
             <label class="form-field">
-              <span>Fine type</span>
-              <select id="fine-filter-type"><option value="">All fine types</option></select>
+              <span>Typ pokuty</span>
+              <select id="fine-filter-type"><option value="">Všetky typy pokút</option></select>
             </label>
-            <button id="fine-filter-clear" class="secondary" type="button">Clear filters</button>
+            <button id="fine-filter-clear" class="secondary" type="button">Vymazať filtre</button>
           </div>
           <span id="fine-filter-summary" class="section-subtitle"></span>
           <p id="status" role="status"></p>
-          <ul id="fines" class="scroll-list fines-list" data-empty="No fines recorded yet."></ul>
+          <ul id="fines" class="scroll-list fines-list" data-empty="Zatiaľ neboli zaznamenané žiadne pokuty."></ul>
         </section>
         <section id="analytics-section" class="panel">
           <div class="section-heading">
             <div>
-              <h2>Season dashboard</h2>
-              <span class="section-subtitle">Team pot and fine statistics</span>
+              <h2>Prehľad sezóny</h2>
+              <span class="section-subtitle">Tímová pokladňa a štatistiky pokút</span>
             </div>
             <label class="month-control">
-              <span>Season</span>
-              <select id="analytics-season" aria-label="Analytics season"></select>
+              <span>Sezóna</span>
+              <select id="analytics-season" aria-label="Sezóna štatistík"></select>
             </label>
           </div>
           <p id="analytics-status" role="status"></p>
           <div class="metric-grid">
-            <div class="metric-card"><span class="meta">Team pot collected</span><strong id="metric-pot" class="metric-value">€0.00</strong></div>
-            <div class="metric-card"><span class="meta">Net amount assessed</span><strong id="metric-assessed" class="metric-value">€0.00</strong><span id="metric-breakdown" class="meta"></span></div>
-            <div class="metric-card"><span class="meta">Outstanding</span><strong id="metric-outstanding" class="metric-value">€0.00</strong></div>
-            <div class="metric-card"><span class="meta">Collected</span><strong id="metric-rate" class="metric-value">0%</strong></div>
+            <div class="metric-card"><span class="meta">Vybrané do tímovej pokladne</span><strong id="metric-pot" class="metric-value">€0.00</strong></div>
+            <div class="metric-card"><span class="meta">Čistá vyrubená suma</span><strong id="metric-assessed" class="metric-value">€0.00</strong><span id="metric-breakdown" class="meta"></span></div>
+            <div class="metric-card"><span class="meta">Neuhradené</span><strong id="metric-outstanding" class="metric-value">€0.00</strong></div>
+            <div class="metric-card"><span class="meta">Uhradené</span><strong id="metric-rate" class="metric-value">0%</strong></div>
           </div>
           <div class="analytics-details">
             <div>
-              <h3>Player leaderboard</h3>
-              <ul id="analytics-leaderboard" class="scroll-list analytics-list" data-empty="No fines in this season."></ul>
+              <h3>Poradie hráčov</h3>
+              <ul id="analytics-leaderboard" class="scroll-list analytics-list" data-empty="V tejto sezóne nie sú žiadne pokuty."></ul>
             </div>
             <div>
-              <h3>Most common offences</h3>
-              <ul id="analytics-offences" class="scroll-list analytics-list" data-empty="No normal offences in this season."></ul>
+              <h3>Najčastejšie previnenia</h3>
+              <ul id="analytics-offences" class="scroll-list analytics-list" data-empty="V tejto sezóne nie sú žiadne bežné previnenia."></ul>
             </div>
           </div>
-          <h3>Monthly fine activity</h3>
+          <h3>Mesačný prehľad pokút</h3>
           <div class="chart-legend">
-            <span class="legend-key legend-normal">Normal</span>
-            <span class="legend-key legend-late">Late payment</span>
+            <span class="legend-key legend-normal">Bežné</span>
+            <span class="legend-key legend-late">Oneskorená platba</span>
           </div>
           <div id="analytics-months" class="bar-list"></div>
         </section>
         <section id="account-section" class="panel primary-panel">
           <div class="section-heading">
             <div>
-              <h2>Player balances</h2>
-              <span class="section-subtitle">Amount currently owed by each player</span>
+              <h2>Zostatky hráčov</h2>
+              <span class="section-subtitle">Aktuálna dlžná suma každého hráča</span>
             </div>
             <label class="month-control">
-              <span>Month</span>
-              <input id="balance-period" type="month" aria-label="Balance month" />
+              <span>Mesiac</span>
+              <input id="balance-period" type="month" aria-label="Mesiac zostatku" />
             </label>
           </div>
           <p id="settlement-summary" class="meta"></p>
           <p id="account-status" role="status"></p>
-          <ul id="balances" class="balance-grid" data-empty="No player balances available."></ul>
+          <ul id="balances" class="balance-grid" data-empty="Nie sú dostupné žiadne zostatky hráčov."></ul>
           <details class="payments-history">
-            <summary>Payments received</summary>
-            <ul id="payments" class="scroll-list" data-empty="No payments recorded for this month."></ul>
+            <summary>Prijaté platby</summary>
+            <ul id="payments" class="scroll-list" data-empty="Za tento mesiac neboli zaznamenané žiadne platby."></ul>
           </details>
         </section>
       </section>
     </main>
     <dialog id="login-dialog">
       <div class="dialog-heading">
-        <h2>Admin login</h2>
-        <button id="close-login" class="icon-button secondary" type="button" aria-label="Close login">×</button>
+        <h2>Prihlásenie správcu</h2>
+        <button id="close-login" class="icon-button secondary" type="button" aria-label="Zavrieť prihlásenie">×</button>
       </div>
       <div id="login-dialog-content"></div>
     </dialog>
     <dialog id="admin-dialog">
       <div class="dialog-heading">
         <div>
-          <h2>Admin tools</h2>
-          <span class="section-subtitle">Changes are visible to the team immediately</span>
+          <h2>Nástroje správcu</h2>
+          <span class="section-subtitle">Zmeny sú pre tím viditeľné okamžite</span>
         </div>
-        <button id="close-admin" class="icon-button secondary" type="button" aria-label="Close admin tools">×</button>
+        <button id="close-admin" class="icon-button secondary" type="button" aria-label="Zavrieť nástroje správcu">×</button>
       </div>
       <div id="admin-dialog-content"></div>
     </dialog>
@@ -1472,7 +1472,7 @@
       function updateThemeButton() {
         const dark = currentTheme() === 'dark';
         themeToggle.textContent = dark ? '☀' : '☾';
-        themeToggle.setAttribute('aria-label', dark ? 'Use light mode' : 'Use dark mode');
+        themeToggle.setAttribute('aria-label', dark ? 'Použiť svetlý režim' : 'Použiť tmavý režim');
       }
 
       themeToggle.addEventListener('click', () => {
@@ -1545,7 +1545,7 @@
         try {
           return JSON.parse(text);
         } catch {
-          return { error: 'The server returned an invalid response.' };
+          return { error: 'Server vrátil neplatnú odpoveď.' };
         }
       }
 
@@ -1607,6 +1607,92 @@
         return Array.isArray(value) ? value[0] : value;
       }
 
+      function slovakPlural(value, one, few, many) {
+        const count = Math.abs(Number(value));
+        if (count === 1) return one;
+        if (Number.isInteger(count) && count >= 2 && count <= 4) return few;
+        return many;
+      }
+
+      function categoryLabel(value) {
+        return ({
+          Training: 'Tréning',
+          Equipment: 'Výstroj',
+          Team: 'Tím',
+          Match: 'Zápas',
+          Media: 'Médiá',
+          Award: 'Ocenenie',
+          Administration: 'Administratíva',
+          Payment: 'Platby',
+          Other: 'Iné'
+        })[value] || value;
+      }
+
+      function fineNameLabel(fineType, fallback) {
+        if (fineType?.code === 'custom-fine' || fallback === 'Other') return 'Iná pokuta';
+        return fineType?.name || fallback || 'Neznáma pokuta';
+      }
+
+      function itemLabel(value) {
+        return ({ 'bottle of beer': 'fľaša piva', snack: 'občerstvenie' })[value] || value;
+      }
+
+      function localizedStoredText(value) {
+        const text = String(value || '').trim();
+        const exact = {
+          'No reason provided.': 'Dôvod nebol uvedený.',
+          'Cancelled by administrator.': 'Zrušené správcom.',
+          'Event cancelled': 'Udalosť zrušená',
+          'Removed from the recurring seed schedule.': 'Odstránené z opakujúceho sa zdrojového rozvrhu.',
+          'Created manually by administrator.': 'Manuálne vytvorené správcom.',
+          'Edited manually by administrator.': 'Manuálne upravené správcom.',
+          'Rescheduled manually by administrator.': 'Manuálne presunuté správcom.',
+          'Scheduled on the first eligible full-team event on or after the birthday.': 'Naplánované na prvú vhodnú udalosť celého tímu v deň narodenín alebo po nich.',
+          'Birthday is outside the season; scheduled into the largest available gap.': 'Narodeniny sú mimo sezóny; naplánované do najväčšieho dostupného voľného obdobia.',
+          'No eligible full-team event is available.': 'Nie je dostupná vhodná udalosť celého tímu.',
+          'Scheduled on the first full-team event on or after joining.': 'Naplánované na prvú udalosť celého tímu v deň príchodu alebo po ňom.',
+          'No eligible full-team event is available after the joining date.': 'Po dátume príchodu nie je dostupná vhodná udalosť celého tímu.'
+        };
+        if (exact[text]) return exact[text];
+        const latePayment = text.match(/^Automatic daily penalty for overdue (\d{4}-\d{2}) settlement\.$/);
+        if (latePayment) return `Automatické denné penále za neuhradené zúčtovanie za ${latePayment[1]}.`;
+        const obligationPenalty = text.match(/^Daily penalty for unfulfilled (.+)\.$/);
+        if (obligationPenalty) return `Denné penále za nesplnenú povinnosť: ${obligationPenalty[1]}.`;
+        return text;
+      }
+
+      function unitLabel(value, count) {
+        if (value === 'minute') return slovakPlural(count, 'minúta', 'minúty', 'minút');
+        if (value === 'piece') return slovakPlural(count, 'kus', 'kusy', 'kusov');
+        return value || 'jednotka';
+      }
+
+      const eventTypeLabels = {
+        practice: 'tréning',
+        match: 'zápas',
+        team_dinner: 'tímová večera',
+        other: 'iné'
+      };
+      const eventStatusLabels = {
+        scheduled: 'naplánovaná',
+        completed: 'dokončená',
+        cancelled: 'zrušená'
+      };
+      const obligationStatusLabels = {
+        planned: 'naplánovaná',
+        due: 'splatná',
+        fulfilled: 'splnená',
+        cancelled: 'zrušená',
+        waived: 'odpustená'
+      };
+      const scheduleModeLabels = { automatic: 'automaticky', manual: 'manuálne' };
+      const objectionStatusLabels = {
+        pending: 'čaká na rozhodnutie',
+        accepted: 'prijatá',
+        rejected: 'zamietnutá',
+        cancelled: 'zrušená'
+      };
+
       function localInputValue(value) {
         if (!value) return '';
         const date = new Date(value);
@@ -1615,15 +1701,15 @@
       }
 
       function dateLabel(value) {
-        if (!value) return 'not scheduled';
-        return new Intl.DateTimeFormat(undefined, {
+        if (!value) return 'nenaplánované';
+        return new Intl.DateTimeFormat('sk-SK', {
           dateStyle: 'medium', timeStyle: 'short'
         }).format(new Date(value));
       }
 
       function dateOnlyLabel(value) {
-        if (!value) return 'not set';
-        return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
+        if (!value) return 'nenastavené';
+        return new Intl.DateTimeFormat('sk-SK', { dateStyle: 'medium' })
           .format(new Date(`${value}T12:00:00`));
       }
 
@@ -1658,12 +1744,12 @@
       function resetFineForm() {
         form.reset();
         form.elements.fine_id.value = '';
-        fineEntryHeading.textContent = 'Add a fine';
-        fineSubmit.textContent = 'Add fine';
+        fineEntryHeading.textContent = 'Pridať pokutu';
+        fineSubmit.textContent = 'Pridať pokutu';
         matchDayInput.disabled = false;
-        matchDayLabel.textContent = 'Match day';
+        matchDayLabel.textContent = 'Deň zápasu';
         noteInput.required = false;
-        noteLabel.textContent = 'Optional note';
+        noteLabel.textContent = 'Voliteľná poznámka';
         setCurrentOccurredAt();
         updateFineCalculation();
       }
@@ -1681,12 +1767,12 @@
       function updateSettlementCalculation() {
         const dateValue = settlementForm.elements.club_payment_date.value;
         if (!dateValue) {
-          settlementCalculation.textContent = `Deadline will be ${settlementDeadlineDays} days after the club payment.`;
+          settlementCalculation.textContent = `Termín bude ${settlementDeadlineDays} ${slovakPlural(settlementDeadlineDays, 'deň', 'dni', 'dní')} po platbe od klubu.`;
           return;
         }
         const deadline = new Date(`${dateValue}T12:00:00Z`);
         deadline.setUTCDate(deadline.getUTCDate() + settlementDeadlineDays);
-        settlementCalculation.textContent = `Player payment deadline: ${dateOnlyLabel(deadline.toISOString().slice(0, 10))}`;
+        settlementCalculation.textContent = `Termín platby hráčov: ${dateOnlyLabel(deadline.toISOString().slice(0, 10))}`;
       }
 
       function updateFineCalculation(resetAmount = true) {
@@ -1697,13 +1783,13 @@
           quantityInput.min = '1';
           quantityInput.max = '100';
           quantityInput.step = '1';
-          quantityLabel.textContent = 'Quantity';
-          amountLabel.textContent = 'Final amount (€)';
+          quantityLabel.textContent = 'Množstvo';
+          amountLabel.textContent = 'Konečná suma (€)';
           matchDayInput.disabled = false;
-          matchDayLabel.textContent = 'Match day';
+          matchDayLabel.textContent = 'Deň zápasu';
           noteInput.required = false;
-          noteLabel.textContent = 'Optional note';
-          noteInput.placeholder = 'Additional context';
+          noteLabel.textContent = 'Voliteľná poznámka';
+          noteInput.placeholder = 'Doplňujúce informácie';
           calculation.textContent = '';
           if (resetAmount) amountInput.value = '';
           return;
@@ -1712,16 +1798,16 @@
         if (fineType.match_day_only) matchDayInput.checked = true;
         matchDayInput.disabled = fineType.match_day_only;
         matchDayLabel.textContent = fineType.match_day_only
-          ? 'Match day (required for this fine)'
-          : 'Match day';
+          ? 'Deň zápasu (povinné pre túto pokutu)'
+          : 'Deň zápasu';
         const requiresCustomDescription = fineType.code === 'custom-fine';
         noteInput.required = requiresCustomDescription;
         noteLabel.textContent = requiresCustomDescription
-          ? 'Custom fine description'
-          : 'Optional note';
+          ? 'Opis vlastnej pokuty'
+          : 'Voliteľná poznámka';
         noteInput.placeholder = requiresCustomDescription
-          ? 'Describe what happened'
-          : 'Additional context';
+          ? 'Opíšte, čo sa stalo'
+          : 'Doplňujúce informácie';
 
         const usesQuantity = fineType.calculation_mode === 'per_unit';
         quantityField.hidden = false;
@@ -1730,9 +1816,9 @@
         quantityInput.max = usesQuantity ? '10000' : '100';
         quantityInput.step = '1';
         quantityLabel.textContent = usesQuantity
-          ? `Number of ${fineType.unit_name}s`
-          : 'Number of separate fines';
-        amountLabel.textContent = usesQuantity ? 'Final amount (€)' : 'Amount per fine (€)';
+          ? `Počet jednotiek (${unitLabel(fineType.unit_name, 5)})`
+          : 'Počet samostatných pokút';
+        amountLabel.textContent = usesQuantity ? 'Konečná suma (€)' : 'Suma za jednu pokutu (€)';
 
         const quantity = Number(quantityInput.value);
         const rate = Number(fineType.default_amount);
@@ -1749,10 +1835,10 @@
         const amountPerFine = roundMoney(base * multiplier);
         const total = roundMoney(amountPerFine * (usesQuantity ? 1 : quantity));
         const unitText = usesQuantity
-          ? `${quantity} ${fineType.unit_name}${quantity === 1 ? '' : 's'} × €${rate.toFixed(2)}`
-          : `${quantity} separate fine${quantity === 1 ? '' : 's'} × €${rate.toFixed(2)}`;
-        const multiplierText = multiplier > 1 ? ` × match-day ${multiplier}` : '';
-        const totalText = usesQuantity || quantity === 1 ? '' : ` total €${total.toFixed(2)}`;
+          ? `${quantity} ${unitLabel(fineType.unit_name, quantity)} × €${rate.toFixed(2)}`
+          : `${quantity} ${slovakPlural(quantity, 'samostatná pokuta', 'samostatné pokuty', 'samostatných pokút')} × €${rate.toFixed(2)}`;
+        const multiplierText = multiplier > 1 ? ` × zápasový násobiteľ ${multiplier}` : '';
+        const totalText = usesQuantity || quantity === 1 ? '' : ` spolu €${total.toFixed(2)}`;
         calculation.textContent = `${unitText}${multiplierText} = €${amountPerFine.toFixed(2)}${totalText}`;
         if (resetAmount) amountInput.value = amountPerFine.toFixed(2);
       }
@@ -1766,15 +1852,15 @@
           const player = related(fine.player);
           const fineType = related(fine.fine_type);
           if (fine.player_id && player?.name) players.set(String(fine.player_id), player.name);
-          if (fine.fine_type_id) types.set(String(fine.fine_type_id), fineType?.name || fine.name);
+          if (fine.fine_type_id) types.set(String(fine.fine_type_id), fineNameLabel(fineType, fine.name));
         }
         const byName = (left, right) => left[1].localeCompare(right[1]);
         fineFilterPlayer.replaceChildren(
-          option('', 'All players'),
+          option('', 'Všetci hráči'),
           ...[...players].sort(byName).map(([id, name]) => option(id, name))
         );
         fineFilterType.replaceChildren(
-          option('', 'All fine types'),
+          option('', 'Všetky typy pokút'),
           ...[...types].sort(byName).map(([id, name]) => option(id, name))
         );
         if (players.has(selectedPlayer)) fineFilterPlayer.value = selectedPlayer;
@@ -1793,8 +1879,8 @@
           return true;
         });
         fineFilterSummary.textContent = filteredItems.length === fineItems.length
-          ? `${fineItems.length} fine${fineItems.length === 1 ? '' : 's'}`
-          : `Showing ${filteredItems.length} of ${fineItems.length} fines`;
+          ? `${fineItems.length} ${slovakPlural(fineItems.length, 'pokuta', 'pokuty', 'pokút')}`
+          : `Zobrazených ${filteredItems.length} z ${fineItems.length} pokút`;
         fines.replaceChildren(...filteredItems.map((fine) => {
           const item = document.createElement('li');
           const objection = related(fine.objection);
@@ -1805,50 +1891,51 @@
           const amount = document.createElement('strong');
           copy.className = 'item-copy';
           const relatedPlayer = Array.isArray(fine.player) ? fine.player[0] : fine.player;
-          const fineName = fine.name || fine.description;
+          const fineType = related(fine.fine_type);
+          const fineName = fineNameLabel(fineType, fine.name || fine.description);
           const quantityText = Number(fine.quantity) > 1 && fine.unit_name_snapshot
-            ? ` (${Number(fine.quantity)} ${fine.unit_name_snapshot}s)`
+            ? ` (${Number(fine.quantity)} ${unitLabel(fine.unit_name_snapshot, Number(fine.quantity))})`
             : '';
           const multiplierText = Number(fine.multiplier_applied) > 1
-            ? ` ×${Number(fine.multiplier_applied)} match day`
+            ? ` ×${Number(fine.multiplier_applied)} za deň zápasu`
             : '';
-          const overrideText = fine.amount_overridden ? ' (adjusted)' : '';
+          const overrideText = fine.amount_overridden ? ' (upravená suma)' : '';
           const editCount = Array.isArray(fine.metadata?.edit_history)
             ? fine.metadata.edit_history.length
             : 0;
-          const editText = editCount ? ` (edited ${editCount}×)` : '';
+          const editText = editCount ? ` (upravená ${editCount}×)` : '';
           const voidText = acceptedObjection
-            ? ' — accepted objection; fine voided'
+            ? ' — prijatá námietka; pokuta zrušená'
             : fine.voided_at
-              ? ` — voided${fine.void_reason ? `: ${fine.void_reason}` : ''}`
+              ? ` — zrušená${fine.void_reason ? `: ${localizedStoredText(fine.void_reason)}` : ''}`
             : '';
           description.textContent = `${relatedPlayer?.name ? `${relatedPlayer.name}: ` : ''}`
             + `${fineName}${quantityText}${multiplierText}${overrideText}${editText}${voidText}`;
           copy.append(description);
           const detail = document.createElement('span');
-          const fineNote = String(fine.note || '').trim();
+          const fineNote = localizedStoredText(fine.note);
           detail.className = 'meta fine-detail';
           const fineDate = dateOnlyLabel(localInputValue(fine.occurred_at).slice(0, 10));
-          detail.textContent = `${fineDate}${fineNote ? ` · Note: ${fineNote}` : ''}`;
+          detail.textContent = `${fineDate}${fineNote ? ` · Poznámka: ${fineNote}` : ''}`;
           copy.append(detail);
           amount.textContent = `€${Number(fine.amount).toFixed(2)}`;
           const right = document.createElement('div');
           right.className = 'actions';
           right.append(amount);
           if (isAdmin && editCount) {
-            right.append(actionButton('History', async () => {
+            right.append(actionButton('História', async () => {
               const history = fine.metadata.edit_history.map((entry, index) => {
                 const previous = entry.previous || {};
-                const note = previous.note ? `; note: ${previous.note}` : '';
-                return `${index + 1}. ${dateLabel(entry.edited_at)} — before edit: `
-                  + `€${Number(previous.amount || 0).toFixed(2)}, quantity ${Number(previous.quantity || 1)}, `
-                  + `occurred ${dateLabel(previous.occurred_at)}${note}`;
+                const note = previous.note ? `; poznámka: ${previous.note}` : '';
+                return `${index + 1}. ${dateLabel(entry.edited_at)} — pred úpravou: `
+                  + `€${Number(previous.amount || 0).toFixed(2)}, množstvo ${Number(previous.quantity || 1)}, `
+                  + `dátum ${dateLabel(previous.occurred_at)}${note}`;
               });
               window.alert(history.join('\n'));
             }));
           }
           if (isAdmin && !fine.voided_at && fine.type === 'normal' && fine.source === 'manual' && !fine.objection_id) {
-            right.append(actionButton('Edit', async () => {
+            right.append(actionButton('Upraviť', async () => {
               form.elements.fine_id.value = fine.id;
               playerSelect.value = String(fine.player_id);
               fineTypeSelect.value = String(fine.fine_type_id);
@@ -1858,14 +1945,14 @@
               amountInput.value = Number(fine.amount).toFixed(2);
               occurredAtInput.value = localInputValue(fine.occurred_at);
               noteInput.value = fine.note || '';
-              fineEntryHeading.textContent = 'Edit fine';
-              fineSubmit.textContent = 'Save changes';
+              fineEntryHeading.textContent = 'Upraviť pokutu';
+              fineSubmit.textContent = 'Uložiť zmeny';
               openAdminAt(fineEntry);
             }));
           }
           if (isAdmin && !fine.voided_at && !fine.objection_id) {
-            right.append(actionButton('Void', async () => {
-              const reason = window.prompt('Optional reason for voiding this fine:');
+            right.append(actionButton('Zrušiť', async () => {
+              const reason = window.prompt('Voliteľný dôvod zrušenia pokuty:');
               if (reason === null) return;
               await runAdminAction('/api/fines', {
                 action: 'void', fine_id: fine.id, reason
@@ -1874,8 +1961,8 @@
             }));
           }
           if (isAdmin && !fine.voided_at && fine.player_id && fine.type === 'normal' && !fine.objection_id) {
-            right.append(actionButton('Object', async () => {
-              const reason = window.prompt('Optional reason for the objection (€1 filing fee):');
+            right.append(actionButton('Namietať', async () => {
+              const reason = window.prompt('Voliteľný dôvod námietky (poplatok za podanie 1 €):');
               if (reason === null) return;
               await runAdminAction('/api/objections', {
                 action: 'submit', fine_id: fine.id, reason
@@ -1893,7 +1980,7 @@
           ? await authorizedFetch('/api/fines', {})
           : await fetch('/api/fines');
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load fines.');
+        if (!response.ok) throw new Error(data.error || 'Pokuty sa nepodarilo načítať.');
         render(data.fines || []);
       }
 
@@ -1903,7 +1990,7 @@
       }
 
       function analyticsMonthLabel(value) {
-        return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' })
+        return new Intl.DateTimeFormat('sk-SK', { month: 'short', year: 'numeric' })
           .format(new Date(`${value}-01T12:00:00`));
       }
 
@@ -1911,8 +1998,8 @@
         const summary = analytics?.summary || {};
         metricPot.textContent = moneyLabel(summary.team_pot);
         metricAssessed.textContent = moneyLabel(summary.assessed);
-        metricBreakdown.textContent = `Normal ${moneyLabel(summary.normal_total)} · `
-          + `late ${moneyLabel(summary.late_total)} · adjustments ${moneyLabel(summary.adjustment_total)}`;
+        metricBreakdown.textContent = `Bežné ${moneyLabel(summary.normal_total)} · `
+          + `omeškanie ${moneyLabel(summary.late_total)} · úpravy ${moneyLabel(summary.adjustment_total)}`;
         metricOutstanding.textContent = moneyLabel(summary.outstanding);
         metricRate.textContent = `${Number(summary.collection_rate) || 0}%`;
 
@@ -1929,8 +2016,8 @@
           amount.className = 'balance-value';
           rank.textContent = player.rank;
           name.textContent = player.player_name;
-          details.textContent = `${player.fine_count} fine${player.fine_count === 1 ? '' : 's'} · `
-            + `${player.normal_fine_count} normal · late ${moneyLabel(player.late_amount)}`;
+          details.textContent = `${player.fine_count} ${slovakPlural(player.fine_count, 'pokuta', 'pokuty', 'pokút')} · `
+            + `${player.normal_fine_count} bežných · omeškanie ${moneyLabel(player.late_amount)}`;
           amount.textContent = moneyLabel(player.total_amount);
           const heading = document.createElement('span');
           heading.append(rank, name);
@@ -1947,8 +2034,8 @@
           const amount = document.createElement('strong');
           copy.className = 'item-copy';
           details.className = 'meta';
-          name.textContent = offence.name;
-          details.textContent = `${offence.count} occurrence${offence.count === 1 ? '' : 's'} · ${offence.category}`;
+          name.textContent = fineNameLabel(null, offence.name);
+          details.textContent = `${offence.count} ${slovakPlural(offence.count, 'výskyt', 'výskyty', 'výskytov')} · ${categoryLabel(offence.category)}`;
           amount.textContent = moneyLabel(offence.amount);
           copy.append(name, details);
           item.append(copy, amount);
@@ -1960,7 +2047,7 @@
         if (!months.length) {
           const empty = document.createElement('p');
           empty.className = 'empty-state';
-          empty.textContent = 'No monthly fine activity in this season.';
+          empty.textContent = 'V tejto sezóne nie je žiadna mesačná aktivita pokút.';
           analyticsMonths.replaceChildren(empty);
           return;
         }
@@ -1977,12 +2064,12 @@
           normal.className = 'bar-normal';
           late.className = 'bar-late';
           label.textContent = analyticsMonthLabel(month.month);
-          total.textContent = `${moneyLabel(month.total_amount)} · ${month.count} fine${month.count === 1 ? '' : 's'}`;
+          total.textContent = `${moneyLabel(month.total_amount)} · ${month.count} ${slovakPlural(month.count, 'pokuta', 'pokuty', 'pokút')}`;
           const divisor = maximum || 1;
           normal.style.width = `${(Number(month.normal_amount) / divisor) * 100}%`;
           late.style.width = `${(Number(month.late_amount) / divisor) * 100}%`;
           track.setAttribute('role', 'img');
-          track.setAttribute('aria-label', `${label.textContent}: normal ${moneyLabel(month.normal_amount)}, late payment ${moneyLabel(month.late_amount)}`);
+          track.setAttribute('aria-label', `${label.textContent}: bežné ${moneyLabel(month.normal_amount)}, oneskorené platby ${moneyLabel(month.late_amount)}`);
           heading.append(label, total);
           track.append(normal, late);
           row.append(heading, track);
@@ -1991,27 +2078,28 @@
       }
 
       async function loadAnalytics() {
-        analyticsStatus.textContent = 'Loading dashboard...';
+        analyticsStatus.textContent = 'Načítava sa prehľad...';
         try {
           const query = analyticsSeason.value
             ? `?season=${encodeURIComponent(analyticsSeason.value)}`
             : '';
           const response = await fetch(`/api/analytics${query}`);
           const data = await readJson(response);
-          if (!response.ok) throw new Error(data.error || 'Unable to load analytics.');
+          if (!response.ok) throw new Error(data.error || 'Štatistiky sa nepodarilo načítať.');
           const selectedId = data.selected_season ? String(data.selected_season.id) : '';
           analyticsSeason.replaceChildren(
             ...(data.seasons || []).map((season) => option(
               season.id,
-              `${season.name}${season.active ? ' · current' : ''}`
+              `${season.name}${season.active ? ' · aktuálna' : ''}`
             ))
           );
           analyticsSeason.value = selectedId;
           analyticsSeason.disabled = !data.seasons?.length;
           renderAnalytics(data.analytics);
+          const activeFineCount = data.analytics?.summary?.fine_count || 0;
           analyticsStatus.textContent = data.selected_season
-            ? `${data.analytics?.summary?.fine_count || 0} active fine events in ${data.selected_season.name}.`
-            : 'No season is configured.';
+            ? `${activeFineCount} ${slovakPlural(activeFineCount, 'aktívna pokuta', 'aktívne pokuty', 'aktívnych pokút')} v sezóne ${data.selected_season.name}.`
+            : 'Nie je nastavená žiadna sezóna.';
         } catch (error) {
           analyticsStatus.textContent = error.message;
         }
@@ -2035,29 +2123,29 @@
             : `€${balanceAmount.toFixed(2)}`;
           const adjustmentText = Number(balance.adjustments) === 0
             ? ''
-            : ` · adjustments ${Number(balance.adjustments) < 0 ? '−' : '+'}€${Math.abs(Number(balance.adjustments)).toFixed(2)}`;
+            : ` · úpravy ${Number(balance.adjustments) < 0 ? '−' : '+'}€${Math.abs(Number(balance.adjustments)).toFixed(2)}`;
           const openingText = Number(balance.opening_balance) === 0
             ? ''
-            : `carried ${Number(balance.opening_balance) < 0 ? '−' : ''}€${Math.abs(Number(balance.opening_balance)).toFixed(2)} · `;
+            : `prenesené ${Number(balance.opening_balance) < 0 ? '−' : ''}€${Math.abs(Number(balance.opening_balance)).toFixed(2)} · `;
           const exceptionText = balance.exception?.penalties_waived
-            ? ' · penalties waived'
+            ? ' · penále odpustené'
             : balance.exception?.penalties_paused_until
-              ? ` · paused through ${dateOnlyLabel(balance.exception.penalties_paused_until)}`
+              ? ` · pozastavené do ${dateOnlyLabel(balance.exception.penalties_paused_until)}`
               : balance.exception?.custom_deadline
-                ? ` · deadline ${dateOnlyLabel(balance.exception.custom_deadline)}`
+                ? ` · termín ${dateOnlyLabel(balance.exception.custom_deadline)}`
                 : '';
           const statusLabels = {
-            no_balance: 'No fines',
-            due: 'Due',
-            overdue: 'Overdue',
-            settled: 'Paid',
-            credit: 'Credit',
-            paused: 'Paused',
-            waived: 'Waived'
+            no_balance: 'Bez pokút',
+            due: 'Na úhradu',
+            overdue: 'Po termíne',
+            settled: 'Uhradené',
+            credit: 'Kredit',
+            paused: 'Pozastavené',
+            waived: 'Odpustené'
           };
-          state.textContent = statusLabels[settlementState] || 'Due';
-          item.title = `${openingText}fines €${Number(balance.charges).toFixed(2)}`
-            + `${adjustmentText} · paid €${Number(balance.paid).toFixed(2)}${exceptionText}`;
+          state.textContent = statusLabels[settlementState] || 'Na úhradu';
+          item.title = `${openingText}pokuty €${Number(balance.charges).toFixed(2)}`
+            + `${adjustmentText} · uhradené €${Number(balance.paid).toFixed(2)}${exceptionText}`;
           const details = document.createElement('details');
           const summary = document.createElement('summary');
           const breakdown = document.createElement('div');
@@ -2065,7 +2153,7 @@
           summary.className = 'balance-summary';
           breakdown.className = 'balance-breakdown';
           breakdownTitle.className = 'balance-breakdown-title';
-          breakdownTitle.textContent = 'Fines in the selected month';
+          breakdownTitle.textContent = 'Pokuty vo vybranom mesiaci';
           summary.append(playerName, amount, state);
           breakdown.append(breakdownTitle);
 
@@ -2080,22 +2168,22 @@
             breakdown.append(row);
           };
           for (const fine of balance.fine_summary || []) {
-            addBreakdownRow(`${fine.count}× ${fine.name}`, moneyLabel(fine.amount));
+            addBreakdownRow(`${fine.count}× ${fineNameLabel(null, fine.name)}`, moneyLabel(fine.amount));
           }
           if (!balance.fine_summary?.length) {
             const empty = document.createElement('span');
             empty.className = 'meta';
-            empty.textContent = 'No new fines this month.';
+            empty.textContent = 'V tomto mesiaci nie sú žiadne nové pokuty.';
             breakdown.append(empty);
           }
           if (Number(balance.opening_balance) !== 0) {
-            addBreakdownRow('Carried balance', moneyLabel(balance.opening_balance));
+            addBreakdownRow('Prenesený zostatok', moneyLabel(balance.opening_balance));
           }
           if (Number(balance.adjustments) !== 0) {
-            addBreakdownRow('Adjustments', moneyLabel(balance.adjustments));
+            addBreakdownRow('Úpravy', moneyLabel(balance.adjustments));
           }
           if (Number(balance.paid) !== 0) {
-            addBreakdownRow('Payments received', `−${moneyLabel(balance.paid)}`);
+            addBreakdownRow('Prijaté platby', `−${moneyLabel(balance.paid)}`);
           }
           details.append(summary, breakdown);
           details.addEventListener('toggle', () => {
@@ -2111,7 +2199,7 @@
           if (isAdmin) {
             const actions = document.createElement('div');
             actions.className = 'actions';
-            actions.append(actionButton('Record', () => {
+            actions.append(actionButton('Platba', () => {
               paymentForm.elements.player_id.value = String(balance.player_id);
               paymentForm.elements.period_month.value = balancePeriod.value;
               paymentForm.elements.amount.value = Number(balance.balance) > 0
@@ -2121,7 +2209,7 @@
               paymentStatus.textContent = '';
               openAdminAt(paymentEntry);
             }));
-            actions.append(actionButton('Exception', () => {
+            actions.append(actionButton('Výnimka', () => {
               exceptionForm.elements.player_id.value = String(balance.player_id);
               exceptionForm.elements.period_month.value = balancePeriod.value;
               exceptionForm.elements.custom_deadline.value = balance.exception?.custom_deadline || '';
@@ -2142,11 +2230,11 @@
         settlementForm.elements.period_month.value = balancePeriod.value;
         settlementForm.elements.club_payment_date.value = monthlyPeriod?.club_payment_date || '';
         if (monthlyPeriod?.club_payment_date && monthlyPeriod?.payment_deadline) {
-          settlementSummary.textContent = `Club payment received ${dateOnlyLabel(monthlyPeriod.club_payment_date)} · Player deadline ${dateOnlyLabel(monthlyPeriod.payment_deadline)}`;
+          settlementSummary.textContent = `Platba od klubu prijatá ${dateOnlyLabel(monthlyPeriod.club_payment_date)} · Termín hráčov ${dateOnlyLabel(monthlyPeriod.payment_deadline)}`;
         } else if (monthlyPeriod?.season_id) {
-          settlementSummary.textContent = 'The club payment date and player deadline have not been set for this month.';
+          settlementSummary.textContent = 'Dátum platby od klubu ani termín hráčov zatiaľ pre tento mesiac nie sú nastavené.';
         } else {
-          settlementSummary.textContent = 'This month is outside the configured seasons.';
+          settlementSummary.textContent = 'Tento mesiac je mimo nastavených sezón.';
         }
         updateSettlementCalculation();
       }
@@ -2158,16 +2246,16 @@
           copy.className = 'item-copy';
           const player = related(payment.player);
           const title = document.createElement('strong');
-          title.textContent = `${player?.name || 'Unknown player'} — €${Number(payment.amount).toFixed(2)}`;
+          title.textContent = `${player?.name || 'Neznámy hráč'} — €${Number(payment.amount).toFixed(2)}`;
           const detail = document.createElement('span');
           detail.className = 'meta';
-          detail.textContent = `Received ${dateLabel(payment.paid_at)}`;
+          detail.textContent = `Prijaté ${dateLabel(payment.paid_at)}`;
           copy.append(title, detail);
           const actions = document.createElement('div');
           actions.className = 'actions';
           if (isAdmin) {
-            actions.append(actionButton('Reverse', async () => {
-              const reason = window.prompt('Optional reason for reversing this payment:');
+            actions.append(actionButton('Stornovať', async () => {
+              const reason = window.prompt('Voliteľný dôvod stornovania platby:');
               if (reason === null) return;
               await runAdminAction('/api/payments', {
                 action: 'reverse', payment_id: payment.id, reason
@@ -2184,7 +2272,7 @@
         const period = balancePeriod.value || new Date().toISOString().slice(0, 7);
         const response = await fetch(`/api/payments?period=${encodeURIComponent(period)}`);
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load account balances.');
+        if (!response.ok) throw new Error(data.error || 'Zostatky účtov sa nepodarilo načítať.');
         renderBalances(data.balances || []);
         renderPayments(data.payments || []);
         renderMonthlyPeriod(data.monthly_period);
@@ -2194,7 +2282,7 @@
       async function loadPlayers() {
         const response = await fetch('/api/players');
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load players.');
+        if (!response.ok) throw new Error(data.error || 'Hráčov sa nepodarilo načítať.');
 
         playersById.clear();
         const playerOptions = (data.players || []).map((player) => {
@@ -2204,20 +2292,20 @@
             : `${player.name} #${player.jersey_number}`);
         });
 
-        const placeholder = option('', playerOptions.length ? 'Select player' : 'No active players');
+        const placeholder = option('', playerOptions.length ? 'Vyberte hráča' : 'Žiadni aktívni hráči');
         playerSelect.replaceChildren(placeholder, ...playerOptions);
         playerSelect.disabled = playerOptions.length === 0;
         obligationForm.elements.player_id.replaceChildren(
-          option('', 'Select player'),
+          option('', 'Vyberte hráča'),
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
         paymentForm.elements.player_id.replaceChildren(
-          option('', 'Select player'),
+          option('', 'Vyberte hráča'),
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
         paymentForm.elements.player_id.disabled = playerOptions.length === 0;
         exceptionForm.elements.player_id.replaceChildren(
-          option('', 'Select player'),
+          option('', 'Vyberte hráča'),
           ...[...playersById.values()].map((player) => option(player.id, player.name))
         );
         exceptionForm.elements.player_id.disabled = playerOptions.length === 0;
@@ -2229,27 +2317,27 @@
       async function loadFineTypes() {
         const response = await fetch('/api/fine-types');
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load fine types.');
+        if (!response.ok) throw new Error(data.error || 'Typy pokút sa nepodarilo načítať.');
 
         fineTypesById.clear();
         const options = (data.fineTypes || []).map((fineType) => {
           fineTypesById.set(String(fineType.id), fineType);
           const option = document.createElement('option');
           option.value = String(fineType.id);
-          option.textContent = `${fineType.category} — ${fineType.name}`;
+          option.textContent = `${categoryLabel(fineType.category)} — ${fineNameLabel(fineType, fineType.name)}`;
           return option;
         });
 
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = options.length ? 'Select fine' : 'No active fine types';
+        placeholder.textContent = options.length ? 'Vyberte pokutu' : 'Žiadne aktívne typy pokút';
         fineTypeSelect.replaceChildren(placeholder, ...options);
         fineTypeSelect.disabled = options.length === 0;
         updateFineCalculation();
       }
 
       async function runAdminAction(url, body, targetStatus) {
-        targetStatus.textContent = 'Saving...';
+        targetStatus.textContent = 'Ukladá sa...';
         const response = await authorizedFetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2258,10 +2346,10 @@
         const data = await readJson(response);
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) showLogin(data.error);
-          targetStatus.textContent = data.error || 'The change could not be saved.';
-          throw new Error(data.error || 'The change could not be saved.');
+          targetStatus.textContent = data.error || 'Zmenu sa nepodarilo uložiť.';
+          throw new Error(data.error || 'Zmenu sa nepodarilo uložiť.');
         }
-        targetStatus.textContent = data.message || 'Saved.';
+        targetStatus.textContent = data.message || 'Uložené.';
         return data;
       }
 
@@ -2304,18 +2392,18 @@
             .filter(Boolean);
           const detail = document.createElement('span');
           detail.className = 'meta';
-          const recurring = event.recurrence_code ? ' · weekly practice' : '';
-          const cancelled = event.cancellation_reason ? ` · ${event.cancellation_reason}` : '';
-          detail.textContent = `${dateLabel(event.starts_at)} · ${event.event_type.replace('_', ' ')} · ${event.attendance_scope === 'full_team' ? 'full team' : participantNames.join(', ')} · ${event.status}${recurring}${cancelled}`;
+          const recurring = event.recurrence_code ? ' · týždenný tréning' : '';
+          const cancelled = event.cancellation_reason ? ` · ${localizedStoredText(event.cancellation_reason)}` : '';
+          detail.textContent = `${dateLabel(event.starts_at)} · ${eventTypeLabels[event.event_type] || event.event_type} · ${event.attendance_scope === 'full_team' ? 'celý tím' : participantNames.join(', ')} · ${eventStatusLabels[event.status] || event.status}${recurring}${cancelled}`;
           copy.append(title, detail);
           const actions = document.createElement('div');
           actions.className = 'actions';
           if (isAdmin) {
-            actions.append(actionButton('Edit', () => editEvent(event)));
+            actions.append(actionButton('Upraviť', () => editEvent(event)));
             if (event.status !== 'cancelled') {
-              actions.append(actionButton('Cancel', async () => {
-                if (!window.confirm(`Cancel ${event.name}? Linked obligations will move to the next eligible full-team event.`)) return;
-                const cancellationReason = window.prompt('Optional cancellation reason:', 'Event cancelled') || '';
+              actions.append(actionButton('Zrušiť', async () => {
+                if (!window.confirm(`Zrušiť udalosť ${event.name}? Prepojené povinnosti sa presunú na najbližšiu vhodnú udalosť pre celý tím.`)) return;
+                const cancellationReason = window.prompt('Voliteľný dôvod zrušenia:', 'Udalosť zrušená') || '';
                 await runAdminAction('/api/events', {
                   action: 'cancel', event_id: event.id, cancellation_reason: cancellationReason
                 }, eventStatus);
@@ -2331,12 +2419,12 @@
       async function loadEvents() {
         const response = await fetch('/api/events');
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load team events.');
+        if (!response.ok) throw new Error(data.error || 'Tímové udalosti sa nepodarilo načítať.');
         renderEvents(data.events || []);
         const currentSeason = eventForm.elements.season_id.value;
         eventForm.elements.season_id.replaceChildren(
-          option('', 'Select season'),
-          ...(data.seasons || []).map((season) => option(season.id, `${season.name}${season.active ? ' (active)' : ''}`))
+          option('', 'Vyberte sezónu'),
+          ...(data.seasons || []).map((season) => option(season.id, `${season.name}${season.active ? ' (aktívna)' : ''}`))
         );
         if (currentSeason) eventForm.elements.season_id.value = currentSeason;
         const currentEvent = obligationForm.elements.scheduled_event_id.value;
@@ -2344,7 +2432,7 @@
           && event.attendance_scope === 'full_team'
           && ['practice', 'match'].includes(event.event_type));
         obligationForm.elements.scheduled_event_id.replaceChildren(
-          option('', eligible.length ? 'Select full-team event' : 'No scheduled full-team events'),
+          option('', eligible.length ? 'Vyberte udalosť pre celý tím' : 'Žiadne naplánované udalosti pre celý tím'),
           ...eligible.map((event) => option(event.id, `${event.name} — ${dateLabel(event.starts_at)}`))
         );
         if (currentEvent) obligationForm.elements.scheduled_event_id.value = currentEvent;
@@ -2358,57 +2446,57 @@
           const player = related(obligation.player);
           const type = related(obligation.obligation_type);
           const title = document.createElement('strong');
-          title.textContent = `${player?.name || 'Unknown player'} — ${type?.name || 'Obligation'}`;
+          title.textContent = `${player?.name || 'Neznámy hráč'} — ${type?.name || 'Povinnosť'}`;
           const detail = document.createElement('span');
           detail.className = 'meta';
-          detail.textContent = `${dateLabel(obligation.due_at)} · ${obligation.status} · ${obligation.schedule_mode}`;
+          detail.textContent = `${dateLabel(obligation.due_at)} · ${obligationStatusLabels[obligation.status] || obligation.status} · ${scheduleModeLabels[obligation.schedule_mode] || obligation.schedule_mode}`;
           copy.append(title, detail);
           const actions = document.createElement('div');
           actions.className = 'actions';
           if (isAdmin && ['planned', 'due'].includes(obligation.status)) {
             actions.append(
-              actionButton('Edit', () => {
+              actionButton('Upraviť', () => {
                 obligationForm.elements.obligation_id.value = obligation.id;
                 obligationForm.elements.player_id.value = obligation.player_id;
                 obligationForm.elements.obligation_type_id.value = obligation.obligation_type_id;
                 obligationForm.elements.scheduled_event_id.value = obligation.scheduled_event_id || '';
                 obligationForm.elements.trigger_date.value = obligation.trigger_date || '';
-                obligationForm.elements.note.value = obligation.scheduling_note || '';
-                obligationSubmit.textContent = 'Save obligation';
+                obligationForm.elements.note.value = localizedStoredText(obligation.scheduling_note);
+                obligationSubmit.textContent = 'Uložiť povinnosť';
                 openAdminAt(obligationForm);
               }),
-              actionButton('Done', async () => {
-                const note = window.prompt('Optional fulfilment note:') || '';
+              actionButton('Splnené', async () => {
+                const note = window.prompt('Voliteľná poznámka k splneniu:') || '';
                 await runAdminAction('/api/obligations', { action: 'fulfill', obligation_id: obligation.id, note }, obligationStatus);
                 await loadObligations();
               }),
-              actionButton('Move', async () => {
+              actionButton('Presunúť', async () => {
                 const choices = [...eventsById.values()]
                   .filter((event) => event.status === 'scheduled'
                     && event.attendance_scope === 'full_team'
                     && ['practice', 'match'].includes(event.event_type))
                   .map((event) => `${event.id}: ${event.name} (${dateLabel(event.starts_at)})`).join('\n');
-                const eventId = window.prompt(`Enter the new full-team event ID:\n${choices}`);
+                const eventId = window.prompt(`Zadajte ID novej udalosti pre celý tím:\n${choices}`);
                 if (!eventId) return;
-                const note = window.prompt('Optional reason for rescheduling:') || '';
+                const note = window.prompt('Voliteľný dôvod presunutia:') || '';
                 await runAdminAction('/api/obligations', { action: 'reschedule', obligation_id: obligation.id, scheduled_event_id: eventId, note }, obligationStatus);
                 await loadObligations();
               }),
-              actionButton('Waive', async () => {
-                const note = window.prompt('Optional reason for waiving this obligation:');
+              actionButton('Odpustiť', async () => {
+                const note = window.prompt('Voliteľný dôvod odpustenia povinnosti:');
                 if (note === null) return;
                 await runAdminAction('/api/obligations', { action: 'waive', obligation_id: obligation.id, note }, obligationStatus);
                 await loadObligations();
               }),
-              actionButton('Cancel', async () => {
-                const note = window.prompt('Optional reason for cancelling this obligation:');
+              actionButton('Zrušiť', async () => {
+                const note = window.prompt('Voliteľný dôvod zrušenia povinnosti:');
                 if (note === null) return;
                 await runAdminAction('/api/obligations', { action: 'cancel', obligation_id: obligation.id, note }, obligationStatus);
                 await loadObligations();
               })
             );
           } else if (isAdmin) {
-            actions.append(actionButton('Reopen', async () => {
+            actions.append(actionButton('Znovu otvoriť', async () => {
               await runAdminAction('/api/obligations', { action: 'reopen', obligation_id: obligation.id }, obligationStatus);
               await loadObligations();
             }));
@@ -2421,12 +2509,12 @@
       async function loadObligations() {
         const response = await fetch('/api/obligations');
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load obligations.');
+        if (!response.ok) throw new Error(data.error || 'Povinnosti sa nepodarilo načítať.');
         renderObligations(data.obligations || []);
         const currentType = obligationForm.elements.obligation_type_id.value;
         obligationForm.elements.obligation_type_id.replaceChildren(
-          option('', 'Select obligation'),
-          ...(data.obligationTypes || []).map((type) => option(type.id, `${type.name} (${type.item_name})`))
+          option('', 'Vyberte povinnosť'),
+          ...(data.obligationTypes || []).map((type) => option(type.id, `${type.name} (${itemLabel(type.item_name)})`))
         );
         if (currentType) obligationForm.elements.obligation_type_id.value = currentType;
       }
@@ -2439,18 +2527,18 @@
           const player = related(objection.player);
           const fine = related(objection.fine);
           const title = document.createElement('strong');
-          title.textContent = `${player?.name || 'Unknown player'} — ${fine?.name || `Fine #${objection.fine_id}`}`;
+          title.textContent = `${player?.name || 'Neznámy hráč'} — ${fineNameLabel(fine, fine?.name || `Pokuta č. ${objection.fine_id}`)}`;
           const detail = document.createElement('span');
           detail.className = 'meta';
-          const credit = objection.status === 'accepted' ? ` · €${Number(objection.accepted_credit_amount).toFixed(2)} account credit` : '';
-          detail.textContent = `${objection.reason} · ${objection.status}${credit}`;
+          const credit = objection.status === 'accepted' ? ` · kredit na účte €${Number(objection.accepted_credit_amount).toFixed(2)}` : '';
+          detail.textContent = `${localizedStoredText(objection.reason)} · ${objectionStatusLabels[objection.status] || objection.status}${credit}`;
           copy.append(title, detail);
           const actions = document.createElement('div');
           actions.className = 'actions';
           if (isAdmin && objection.status === 'pending') {
             for (const decision of ['accepted', 'rejected']) {
-              actions.append(actionButton(decision === 'accepted' ? 'Accept' : 'Reject', async () => {
-                const note = window.prompt('Optional decision note:') || '';
+              actions.append(actionButton(decision === 'accepted' ? 'Prijať' : 'Zamietnuť', async () => {
+                const note = window.prompt('Voliteľná poznámka k rozhodnutiu:') || '';
                 await runAdminAction('/api/objections', { action: 'resolve', objection_id: objection.id, decision, note }, status);
                 await Promise.all([loadObjections(), loadFines(), loadPayments(), loadAnalytics()]);
               }, decision !== 'accepted'));
@@ -2464,7 +2552,7 @@
       async function loadObjections() {
         const response = await fetch('/api/objections');
         const data = await readJson(response);
-        if (!response.ok) throw new Error(data.error || 'Unable to load objections.');
+        if (!response.ok) throw new Error(data.error || 'Námietky sa nepodarilo načítať.');
         renderObjections(data.objections || []);
       }
 
@@ -2472,7 +2560,7 @@
         obligationForm.reset();
         obligationForm.elements.obligation_id.value = '';
         obligationForm.elements.trigger_date.value = new Date().toISOString().slice(0, 10);
-        obligationSubmit.textContent = 'Add obligation';
+        obligationSubmit.textContent = 'Pridať povinnosť';
       }
 
       fineTypeSelect.addEventListener('change', () => {
@@ -2534,7 +2622,7 @@
         const playerId = exceptionForm.elements.player_id.value;
         const period = exceptionForm.elements.period_month.value;
         if (!playerId || !period) {
-          exceptionStatus.textContent = 'Choose a player and settlement month.';
+          exceptionStatus.textContent = 'Vyberte hráča a zúčtovací mesiac.';
           return;
         }
         exceptionClear.disabled = true;
@@ -2615,7 +2703,7 @@
         try {
           const data = await runAdminAction('/api/catalog-sync', {}, adminToolsStatus);
           const counts = data.counts || {};
-          adminToolsStatus.textContent = `Synced ${counts.players || 0} players, ${counts.fineTypes || 0} fine types, ${counts.weeklyPractices || 0} weekly practice dates, ${counts.events || 0} total events, ${counts.birthdayObligations || 0} birthday obligations and ${counts.newArrivalObligations || 0} new-arrival obligations.`;
+          adminToolsStatus.textContent = `Synchronizované: ${counts.players || 0} hráčov, ${counts.fineTypes || 0} typov pokút, ${counts.weeklyPractices || 0} termínov týždenných tréningov, ${counts.events || 0} udalostí, ${counts.birthdayObligations || 0} narodeninových povinností a ${counts.newArrivalObligations || 0} povinností nových hráčov.`;
           await Promise.all([loadPlayers(), loadFineTypes(), loadEvents(), loadObligations()]);
         } catch (error) {
           adminToolsStatus.textContent = error.message;
@@ -2640,7 +2728,7 @@
         event.preventDefault();
         const button = event.submitter;
         button.disabled = true;
-        authStatus.textContent = 'Logging in...';
+        authStatus.textContent = 'Prihlasuje sa...';
         try {
           const body = Object.fromEntries(new FormData(authForm));
           body.action = 'login';
@@ -2650,12 +2738,12 @@
             body: JSON.stringify(body)
           });
           const data = await readJson(response);
-          if (!response.ok || !data.session) throw new Error(data.error || 'Login failed.');
+          if (!response.ok || !data.session) throw new Error(data.error || 'Prihlásenie zlyhalo.');
           saveSession(data.session);
           updateAuthUi(true);
           authForm.reset();
           authStatus.textContent = '';
-          status.textContent = 'Logged in as administrator.';
+          status.textContent = 'Prihlásený ako správca.';
           await Promise.all([loadFines(), loadPayments(), loadEvents(), loadObligations(), loadObjections()]);
         } catch (error) {
           authStatus.textContent = error.message;
@@ -2667,13 +2755,13 @@
       magicLink.addEventListener('click', async () => {
         const email = authForm.elements.email.value.trim();
         if (!email) {
-          authStatus.textContent = 'Enter your admin email first.';
+          authStatus.textContent = 'Najprv zadajte e-mail správcu.';
           authForm.elements.email.focus();
           return;
         }
 
         magicLink.disabled = true;
-        authStatus.textContent = 'Requesting setup link...';
+        authStatus.textContent = 'Odosiela sa odkaz na nastavenie...';
         try {
           const response = await fetch('/api/auth', {
             method: 'POST',
@@ -2681,7 +2769,7 @@
             body: JSON.stringify({ action: 'magic_link', email })
           });
           const data = await readJson(response);
-          if (!response.ok) throw new Error(data.error || 'Unable to request a setup link.');
+          if (!response.ok) throw new Error(data.error || 'Odkaz na nastavenie sa nepodarilo vyžiadať.');
           authStatus.textContent = data.message;
         } catch (error) {
           authStatus.textContent = error.message;
@@ -2695,12 +2783,12 @@
         const button = event.submitter;
         const body = Object.fromEntries(new FormData(passwordForm));
         if (body.password !== body.confirmation) {
-          passwordStatus.textContent = 'The passwords do not match.';
+          passwordStatus.textContent = 'Heslá sa nezhodujú.';
           return;
         }
 
         button.disabled = true;
-        passwordStatus.textContent = 'Saving...';
+        passwordStatus.textContent = 'Ukladá sa...';
         try {
           const response = await authorizedFetch('/api/auth', {
             method: 'POST',
@@ -2710,7 +2798,7 @@
           const data = await readJson(response);
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) showLogin(data.error);
-            throw new Error(data.error || 'Unable to save the password.');
+            throw new Error(data.error || 'Heslo sa nepodarilo uložiť.');
           }
           passwordForm.reset();
           passwordStatus.textContent = data.message;
@@ -2775,7 +2863,7 @@
         event.preventDefault();
         const button = event.submitter;
         button.disabled = true;
-        status.textContent = 'Saving...';
+        status.textContent = 'Ukladá sa...';
         try {
           const body = Object.fromEntries(new FormData(form));
           body.action = body.fine_id ? 'update' : 'create';
@@ -2789,11 +2877,11 @@
           const data = await readJson(response);
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) showLogin(data.error);
-            throw new Error(data.error || 'Unable to save the fine.');
+            throw new Error(data.error || 'Pokutu sa nepodarilo uložiť.');
           }
           resetFineForm();
           await Promise.all([loadFines(), loadPayments(), loadAnalytics()]);
-          status.textContent = data.message || 'Saved.';
+          status.textContent = data.message || 'Uložené.';
         } catch (error) {
           status.textContent = error.message;
         } finally {
