@@ -1725,7 +1725,8 @@
           const detail = document.createElement('span');
           const fineNote = String(fine.note || '').trim();
           detail.className = 'meta fine-detail';
-          detail.textContent = `${dateLabel(fine.occurred_at)}${fineNote ? ` · Note: ${fineNote}` : ''}`;
+          const fineDate = dateOnlyLabel(localInputValue(fine.occurred_at).slice(0, 10));
+          detail.textContent = `${fineDate}${fineNote ? ` · Note: ${fineNote}` : ''}`;
           copy.append(detail);
           amount.textContent = `€${Number(fine.amount).toFixed(2)}`;
           const right = document.createElement('div');
