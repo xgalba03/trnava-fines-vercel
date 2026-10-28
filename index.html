@@ -1740,6 +1740,11 @@
         occurredAtInput.value = localTime.toISOString().slice(0, 16);
       }
 
+      function previousMonthValue(date = new Date()) {
+        const previousMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+        return `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+      }
+
       function resetFineForm() {
         form.reset();
         form.elements.fine_id.value = '';
@@ -1757,7 +1762,7 @@
         const now = new Date();
         const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
         paymentForm.elements.paid_at.value = localTime.toISOString().slice(0, 16);
-        if (!balancePeriod.value) balancePeriod.value = localTime.toISOString().slice(0, 7);
+        if (!balancePeriod.value) balancePeriod.value = previousMonthValue(now);
         paymentForm.elements.period_month.value = balancePeriod.value;
         settlementForm.elements.period_month.value = balancePeriod.value;
         exceptionForm.elements.period_month.value = balancePeriod.value;
@@ -2268,7 +2273,7 @@
       }
 
       async function loadPayments() {
-        const period = balancePeriod.value || new Date().toISOString().slice(0, 7);
+        const period = balancePeriod.value || previousMonthValue();
         const response = await fetch(`/api/payments?period=${encodeURIComponent(period)}`);
         const data = await readJson(response);
         if (!response.ok) throw new Error(data.error || 'Zostatky účtov sa nepodarilo načítať.');
